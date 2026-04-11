@@ -1,1 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>YouKe Karaoke</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="fantasy-bg">
+    <div class="stars"></div>
 
+    <div class="page-center">
+        <div class="glass-card narrow">
+            <h1 class="glow-title">✨ YouKe Karaoke ✨</h1>
+            <p class="muted intro-text">
+                Create a YouKe room on computer, then scan QR with mobile to search songs and control play or skip.
+            </p>
+
+            <div class="info-box">
+                <strong>Local IP:</strong> {{ local_ip }}
+                <div class="small muted">Open on PC with: http://{{ local_ip }}:5000/</div>
+            </div>
+
+            <div class="info-box">
+                <strong>Song database:</strong>
+                {% if db_exists %}
+                    Ready
+                {% else %}
+                    Not found (put <code>youke_karaoke.db</code> next to <code>app.py</code>)
+                {% endif %}
+            </div>
+
+            <form action="/create" method="post">
+                <button type="submit" class="magic-btn pink">Create Room</button>
+            </form>
+
+            <hr>
+
+            <form action="/join" method="post">
+                <input type="text" name="room_code" placeholder="Enter Room Code" required>
+                <button type="submit" class="magic-btn blue">Join by Room Code</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

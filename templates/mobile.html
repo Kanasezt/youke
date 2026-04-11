@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>YouKe Karaoke Mobile {{ code }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="fantasy-bg">
+    <div class="stars"></div>
+
+    <div class="mobile-page">
+        <div class="page-topbar mobile-topbar">
+            <div class="topbar-title">🎶 YouKe Karaoke</div>
+            <div class="room-badge">Room {{ code }}</div>
+        </div>
+
+        <div class="mobile-content">
+            <div class="glass-panel mobile-controls">
+                <div class="section-title">Your Singer Name</div>
+                <input id="mobile_name" placeholder="Please enter your name" oninput="handleSingerNameChange()">
+                <div class="small muted top-gap">You must enter your name before adding a song.</div>
+
+                <div class="button-grid top-gap">
+                    <button class="magic-btn green" onclick="playSong()">▶ Play</button>
+                    <button class="magic-btn orange" onclick="skipSong()">⏭ Skip</button>
+                </div>
+
+                <div class="section-title top-gap">Search Song</div>
+                <input id="song_search" placeholder="Search song name" oninput="handleSearchInput()">
+                <div id="msg" class="small muted top-gap"></div>
+            </div>
+
+            <div id="searchResults" class="mobile-queue"></div>
+            <div id="queueBox" class="mobile-queue"></div>
+        </div>
+    </div>
+
+    <script>
+        const ROOM_CODE = "{{ code }}";
+        const SINGER_KEY = `youke_karaoke_singer_${ROOM_CODE}`;
+        let searchTimer = null;
+
+        function loadSingerName() {
+            const saved = localStorage.getItem(SINGER_KEY) || "";
+            document.getElementById("mobile_name").value = saved;
+        }
+
+        function saveSingerName() {
+            const name = document.getElementById("mobile_name").value.trim();
+            if (name) {
+                localStorage.setItem(SINGER_KEY, name);
+            } else {
+                localStorage.removeItem(SINGER_KEY);
+            }
+            return name;
+        }
+
+        function handleSingerNameChange() {
+            saveSingerName();
+        }
+
+        function handleSearchInput() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(runSearch, 300);
+        }
+
+        async function runSearch() {
+            const q = document.getElementById("song_search").value.trim();
+            const box = document.getElementById("searchResults");
+
+            if (!q) {
+                box.innerHTML = "";
+                return;
+            }
+
+            const res = await fetch(`/api/song/search?q=${encodeURIComponent(q)}&limit=20`);
+            const data = await res.json();
+
+            if (!res.ok) {
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || "Search failed")}</div>`;
+                return;
+            }
+
+            renderSearchResults(data.results || []);
+        }
+
+        function renderSearchResults(results) {
+            const box = document.getElementById("searchResults");
+
+            if (!results.length) {
+                box.innerHTML = `<div class="empty-box glass-panel">No songs found</div>`;
+                return;
+            }
+
+            box.innerHTML = results.map(song => `
+                <div class="song-card sparkle-card result-card">
+                    <img src="${escapeHtml(song.thumbnail)}" alt="thumbnail">
+                    <div class="song-text">
+                        <div class="song-pill result-pill">SEARCH RESULT</div>
+                        <div class="song-title">${escapeHtml(song.title || song.videoId)}</div>
+                        <div class="song-sub">${escapeHtml(song.channelName || "")}</div>
+                        <div class="song-action-row">
+                            <button class="magic-btn pink small-action-btn" onclick="addSongFromDb('${escapeJs(song.videoId)}')">
+                                Add
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        async function addSongFromDb(videoId) {
+            const msg = document.getElementById("msg");
+            const name = saveSingerName();
+
+            if (!name) {
+                msg.textContent = "Please enter your singer name first";
+                document.getElementById("mobile_name").focus();
+                return;
+            }
+
+            const res = await fetch(`/api/rooms/${ROOM_CODE}/add`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    video_id: videoId,
+                    requested_by: name
+                })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                msg.textContent = data.error || "Add failed";
+                return;
+            }
+
+            msg.textContent = data.message || "Song added";
+            refreshState();
+        }
+
+        async function refreshState() {
+            const res = await fetch(`/api/rooms/${ROOM_CODE}/state`);
+            const data = await res.json();
+            renderQueue(data);
+        }
+
+        function renderQueue(data) {
+            const queueBox = document.getElementById("queueBox");
+            let html = "";
+
+            if (data.current) {
+                html += `
+                    <div class="song-card current-song sparkle-card">
+                        <img src="${escapeHtml(data.current.thumbnail)}" alt="thumbnail">
+                        <div class="song-text">
+                            <div class="song-pill now-pill">NOW PLAYING</div>
+                            <div class="song-title">${escapeHtml(data.current.title || data.current.videoId)}</div>
+                            <div class="song-sub">Singer : ${escapeHtml(data.current.requestedBy || "Guest")}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (data.queue && data.queue.length > 0) {
+                html += data.queue.map(item => `
+                    <div class="song-card sparkle-card">
+                        <img src="${escapeHtml(item.thumbnail)}" alt="thumbnail">
+                        <div class="song-text">
+                            <div class="song-title">${escapeHtml(item.title || item.videoId)}</div>
+                            <div class="song-sub">Singer : ${escapeHtml(item.requestedBy || "Guest")}</div>
+                        </div>
+                    </div>
+                `).join("");
+            }
+
+            if (!html) {
+                html = `<div class="empty-box glass-panel">Queue empty</div>`;
+            }
+
+            queueBox.innerHTML = html;
+        }
+
+        async function playSong() {
+            const msg = document.getElementById("msg");
+            const name = saveSingerName();
+
+            if (!name) {
+                msg.textContent = "Please enter your singer name first";
+                document.getElementById("mobile_name").focus();
+                return;
+            }
+
+            const res = await fetch(`/api/rooms/${ROOM_CODE}/play`, { method: "POST" });
+            const data = await res.json();
+
+            if (!res.ok) {
+                msg.textContent = data.error || "Play failed";
+                return;
+            }
+
+            msg.textContent = "Play command sent";
+            refreshState();
+        }
+
+        async function skipSong() {
+            const msg = document.getElementById("msg");
+            const name = saveSingerName();
+
+            if (!name) {
+                msg.textContent = "Please enter your singer name first";
+                document.getElementById("mobile_name").focus();
+                return;
+            }
+
+            const res = await fetch(`/api/rooms/${ROOM_CODE}/skip`, { method: "POST" });
+            const data = await res.json();
+
+            if (!res.ok) {
+                msg.textContent = data.error || "Skip failed";
+                return;
+            }
+
+            msg.textContent = data.message || "Skipped";
+            refreshState();
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+        function escapeJs(str) {
+            return String(str).replaceAll("\\", "\\\\").replaceAll("'", "\\'");
+        }
+
+        loadSingerName();
+        setInterval(refreshState, 1500);
+        refreshState();
+    </script>
+</body>
+</html>

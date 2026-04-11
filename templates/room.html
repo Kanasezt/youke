@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>YouKe Karaoke - Room {{ code }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+</head>
+<body class="fantasy-bg">
+    <div class="stars"></div>
+
+    <div class="computer-page">
+        <div class="page-topbar">
+            <div class="topbar-title">🎤 YouKe</div>
+            <div class="room-badge">Room {{ code }}</div>
+        </div>
+
+        <div class="computer-layout">
+            <div class="main-area glass-panel">
+                <div id="playerPanel" class="player-panel">
+                    <div id="player"></div>
+                    <div id="playerOverlay" class="overlay-message hidden"></div>
+
+                    <div class="video-qr-overlay">
+                        <div class="video-qr-title">Scan to Search Song</div>
+                        <div id="qrcode" class="video-qr-box"></div>
+                    </div>
+
+                    <button id="fullscreenBtn" class="fullscreen-fab" onclick="toggleFullscreen()" title="Fullscreen">
+                        ⛶
+                    </button>
+                </div>
+
+                <div class="button-row left-buttons">
+                    <button class="magic-btn green" onclick="manualPlay()">▶ Play</button>
+                    <button class="magic-btn orange" onclick="manualSkip()">⏭ Skip</button>
+                    <button class="magic-btn blue" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+                </div>
+
+                <div class="computer-add-area">
+                    <div class="section-title">Database Status</div>
+                    <div class="small muted">
+                        {% if db_exists %}
+                            Song database connected. Use mobile to search and add songs.
+                        {% else %}
+                            Database not found. Put <code>youke_karaoke.db</code> next to <code>app.py</code>.
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="glass-panel mobile-link-panel">
+                    <div class="section-title small-panel-title">Mobile Link</div>
+                    <div class="small muted" id="mobileUrlText"></div>
+                </div>
+
+                <div id="queueBox" class="queue-stack"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ROOM_CODE = "{{ code }}";
+        const BASE_URL = "{{ base_url }}";
+        const MOBILE_URL = `${BASE_URL}/mobile/${ROOM_CODE}`;
+
+        let player = null;
+        let ytReady = false;
+        let lastNonce = -1;
+        let currentVideoId = null;
+        let currentIsPlaying = null;
+
+        document.getElementById("mobileUrlText").textContent = MOBILE_URL;
+
+        const qrCanvas = document.createElement("canvas");
+        document.getElementById("qrcode").appendChild(qrCanvas);
+        QRCode.toCanvas(qrCanvas, MOBILE_URL, { width: 120 }, function (err) {
+            if (err) console.error(err);
+        });
+
+        function setOverlay(text, show = true) {
+            const overlay = document.getElementById("playerOverlay");
+            overlay.textContent = text || "";
+            overlay.classList.toggle("hidden", !show);
+        }
+
+        async function toggleFullscreen() {
+            const panel = document.getElementById("playerPanel");
+
+            try {
+                if (!document.fullscreenElement) {
+                    await panel.requestFullscreen();
+                } else {
+                    await document.exitFullscreen();
+                }
+            } catch (err) {
+                console.error("fullscreen error:", err);
+            }
+        }
+
+        document.addEventListener("fullscreenchange", () => {
+            const btn = document.getElementById("fullscreenBtn");
+            if (document.fullscreenElement) {
+                btn.textContent = "⤫";
+                btn.title = "Exit Fullscreen";
+            } else {
+                btn.textContent = "⛶";
+                btn.title = "Fullscreen";
+            }
+        });
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player("player", {
+                width: "100%",
+                height: "100%",
+                videoId: "",
+                playerVars: {
+                    autoplay: 1,
+                    rel: 0,
+                    modestbranding: 1,
+                    fs: 0
+                },
+                events: {
+                    onReady: () => {
+                        ytReady = true;
+                        refreshState();
+                    },
+                    onStateChange: onPlayerStateChange,
+                    onError: onPlayerError
+                }
+            });
+        }
+
+        function onPlayerStateChange(event) {
+            if (!window.YT) return;
+
+            if (event.data === YT.PlayerState.PLAYING) {
+                setOverlay("", false);
+            }
+
+            if (event.data === YT.PlayerState.ENDED) {
+                fetch(`/api/rooms/${ROOM_CODE}/skip`, { method: "POST" })
+                    .then(r => r.json())
+                    .then(() => refreshState());
+            }
+        }
+
+        function onPlayerError(event) {
+            console.log("YT player error:", event.data);
+            setOverlay("This video cannot be played or embedded. Skipping...", true);
+
+            fetch(`/api/rooms/${ROOM_CODE}/skip`, { method: "POST" })
+                .then(r => r.json())
+                .then(() => refreshState());
+        }
+
+        async function refreshState() {
+            const res = await fetch(`/api/rooms/${ROOM_CODE}/state`);
+            const data = await res.json();
+
+            renderQueue(data);
+
+            if (!ytReady || !player) return;
+
+            const current = data.current;
+            const nonce = data.player_nonce;
+            const shouldPlay = data.is_playing;
+
+            if (!current) {
+                currentVideoId = null;
+                currentIsPlaying = false;
+                setOverlay("No song playing", true);
+                return;
+            }
+
+            if (nonce !== lastNonce || current.videoId !== currentVideoId) {
+                lastNonce = nonce;
+                currentVideoId = current.videoId;
+                currentIsPlaying = shouldPlay;
+
+                setOverlay("Loading YouKe song...", true);
+
+                try {
+                    player.loadVideoById(current.videoId);
+                } catch (err) {
+                    console.error("loadVideoById error:", err);
+                }
+
+                setTimeout(() => {
+                    try {
+                        if (shouldPlay) {
+                            player.playVideo();
+                        }
+                    } catch (err) {
+                        console.error(err);
+                    }
+                }, 700);
+
+                setTimeout(() => {
+                    try {
+                        if (shouldPlay && player.getPlayerState() !== YT.PlayerState.PLAYING) {
+                            setOverlay("Autoplay blocked. Click Play once on computer screen.", true);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                    }
+                }, 1500);
+
+                return;
+            }
+
+            if (shouldPlay !== currentIsPlaying) {
+                currentIsPlaying = shouldPlay;
+                try {
+                    if (shouldPlay) {
+                        player.playVideo();
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+        }
+
+        function renderQueue(data) {
+            const queueBox = document.getElementById("queueBox");
+            let html = "";
+
+            if (data.current) {
+                html += `
+                    <div class="song-card current-song sparkle-card">
+                        <img src="${escapeHtml(data.current.thumbnail)}" alt="thumbnail">
+                        <div class="song-text">
+                            <div class="song-pill now-pill">NOW PLAYING</div>
+                            <div class="song-title">${escapeHtml(data.current.title || data.current.videoId)}</div>
+                            <div class="song-sub">Singer : ${escapeHtml(data.current.requestedBy || "Guest")}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (data.queue && data.queue.length > 0) {
+                html += data.queue.map(item => `
+                    <div class="song-card sparkle-card">
+                        <img src="${escapeHtml(item.thumbnail)}" alt="thumbnail">
+                        <div class="song-text">
+                            <div class="song-title">${escapeHtml(item.title || item.videoId)}</div>
+                            <div class="song-sub">Singer : ${escapeHtml(item.requestedBy || "Guest")}</div>
+                        </div>
+                    </div>
+                `).join("");
+            }
+
+            if (!html) {
+                html = `<div class="empty-box glass-panel">Queue empty</div>`;
+            }
+
+            queueBox.innerHTML = html;
+        }
+
+        async function manualPlay() {
+            await fetch(`/api/rooms/${ROOM_CODE}/play`, { method: "POST" });
+            refreshState();
+
+            setTimeout(() => {
+                try {
+                    player.playVideo();
+                    setOverlay("", false);
+                } catch (err) {
+                    console.error(err);
+                }
+            }, 300);
+        }
+
+        async function manualSkip() {
+            await fetch(`/api/rooms/${ROOM_CODE}/skip`, { method: "POST" });
+            refreshState();
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+        setInterval(refreshState, 1500);
+    </script>
+</body>
+</html>
