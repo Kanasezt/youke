@@ -122,9 +122,8 @@ def search_songs(query: str, limit: int = 20) -> list[dict]:
     if not q:
         return []
 
-    q_lower = q.lower()
-    like_any = f"%{q_lower}%"
-    like_prefix = f"{q_lower}%"
+    like_any = f"%{q}%"
+    like_prefix = f"{q}%"
 
     with db_connect() as conn:
         with conn.cursor() as cur:
@@ -138,24 +137,24 @@ def search_songs(query: str, limit: int = 20) -> list[dict]:
                     score,
                     embed_ok,
                     CASE
-                        WHEN lower(title) = %s THEN 400
-                        WHEN lower(title) LIKE %s THEN 250
-                        WHEN lower(title) LIKE %s THEN 150
-                        WHEN lower(channel_name) LIKE %s THEN 80
+                        WHEN title ILIKE %s THEN 400
+                        WHEN title ILIKE %s THEN 250
+                        WHEN title ILIKE %s THEN 150
+                        WHEN channel_name ILIKE %s THEN 80
                         ELSE 0
                     END
                     + COALESCE(score, 0) AS final_rank
                 FROM karaoke_songs
                 WHERE embed_ok = 1
                   AND (
-                        lower(title) LIKE %s
-                     OR lower(channel_name) LIKE %s
+                        title ILIKE %s
+                     OR channel_name ILIKE %s
                   )
                 ORDER BY final_rank DESC, title ASC
                 LIMIT %s
                 """,
                 (
-                    q_lower,
+                    q,
                     like_prefix,
                     like_any,
                     like_any,
@@ -266,9 +265,12 @@ def api_song_search():
     if not q:
         return jsonify({"results": []})
 
-    results = search_songs(q, limit=limit)
-    return jsonify({"results": results})
-
+    try:
+        results = search_songs(q, limit=limit)
+        return jsonify({"results": results})
+    except Exception as e:
+        print(f"SEARCH ERROR: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/rooms/<code>/add", methods=["POST"])
 def api_add_song(code: str):
