@@ -180,8 +180,8 @@ def search_songs(query: str, limit: int = 20) -> list[dict]:
 
 @app.route("/")
 def index():
-    local_ip = get_local_ip()
-    return render_template("index.html", local_ip=local_ip, db_exists=db_ready())
+    base_url = request.host_url.rstrip("/")
+    return render_template("index.html", local_ip=base_url, db_exists=db_ready())
 
 
 @app.route("/create", methods=["POST"])
@@ -213,13 +213,13 @@ def room_page(code: str):
     if not room:
         return "Room not found", 404
 
-    local_ip = get_local_ip()
-    base_url = f"http://{local_ip}:5000"
+    base_url = request.host_url.rstrip("/")
+
     return render_template(
         "room.html",
         code=code,
         base_url=base_url,
-        local_ip=local_ip,
+        local_ip=base_url,
         db_exists=db_ready(),
     )
 
