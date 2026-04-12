@@ -37,7 +37,7 @@
 
             <div class="glass-panel mobile-controls">
                 <div class="section-title">Up Next</div>
-                <div class="small muted drag-hint">Press and drag to reorder queue.</div>
+                <div class="small muted drag-hint">Press and hold on a song card to reorder queue.</div>
                 <div id="queueBox" class="mobile-queue"></div>
             </div>
         </div>
@@ -178,8 +178,7 @@
 
             if (data.queue && data.queue.length > 0) {
                 queueHtml = data.queue.map((item, idx) => `
-                    <div class="song-card sparkle-card queue-item-draggable" data-item-id="${item.itemId}">
-                        <div class="drag-handle">☰</div>
+                    <div class="song-card sparkle-card queue-item-draggable draggable-song" data-item-id="${item.itemId}">
                         <img src="${escapeHtml(item.thumbnail)}" alt="thumbnail">
                         <div class="song-text">
                             <div class="song-pill result-pill">NEXT ${idx + 1}</div>
@@ -211,10 +210,14 @@
 
             queueSortable = Sortable.create(queueBox, {
                 animation: 180,
-                handle: ".drag-handle",
+                draggable: ".queue-item-draggable",
                 ghostClass: "drag-ghost",
                 chosenClass: "drag-chosen",
                 dragClass: "drag-dragging",
+                delay: 180,
+                delayOnTouchOnly: true,
+                touchStartThreshold: 6,
+                fallbackTolerance: 6,
                 onEnd: async () => {
                     const orderedIds = Array.from(queueBox.querySelectorAll("[data-item-id]"))
                         .map(el => Number(el.dataset.itemId));
