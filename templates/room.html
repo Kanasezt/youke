@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 </head>
 <body class="fantasy-bg">
     <div class="stars"></div>
@@ -46,7 +47,12 @@
                     <div class="small muted" id="mobileUrlText"></div>
                 </div>
 
-                <div id="queueBox" class="queue-stack"></div>
+                <div id="currentBox" class="queue-stack"></div>
+                <div class="glass-panel queue-panel">
+                    <div class="section-title small-panel-title">Up Next</div>
+                    <div class="small muted drag-hint">Press and drag to reorder queue.</div>
+                    <div id="queueBox" class="queue-stack"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -61,6 +67,7 @@
         let lastNonce = -1;
         let currentVideoId = null;
         let currentIsPlaying = null;
+        let queueSortable = null;
 
         document.getElementById("mobileUrlText").textContent = MOBILE_URL;
 
@@ -214,11 +221,14 @@
         }
 
         function renderQueue(data) {
+            const currentBox = document.getElementById("currentBox");
             const queueBox = document.getElementById("queueBox");
-            let html = "";
+
+            let currentHtml = "";
+            let queueHtml = "";
 
             if (data.current) {
-                html += `
+                currentHtml = `
                     <div class="song-card current-song sparkle-card">
                         <img src="${escapeHtml(data.current.thumbnail)}" alt="thumbnail">
                         <div class="song-text">
@@ -228,25 +238,62 @@
                         </div>
                     </div>
                 `;
+            } else {
+                currentHtml = `<div class="empty-box glass-panel">No song playing</div>`;
             }
 
             if (data.queue && data.queue.length > 0) {
-                html += data.queue.map(item => `
-                    <div class="song-card sparkle-card">
+                queueHtml = data.queue.map((item, idx) => `
+                    <div class="song-card sparkle-card queue-item-draggable" data-item-id="${item.itemId}">
+                        <div class="drag-handle">☰</div>
                         <img src="${escapeHtml(item.thumbnail)}" alt="thumbnail">
                         <div class="song-text">
+                            <div class="song-pill result-pill">NEXT ${idx + 1}</div>
                             <div class="song-title">${escapeHtml(item.title || item.videoId)}</div>
                             <div class="song-sub">Singer : ${escapeHtml(item.requestedBy || "Guest")}</div>
                         </div>
                     </div>
                 `).join("");
+            } else {
+                queueHtml = `<div class="empty-box glass-panel">Queue empty</div>`;
             }
 
-            if (!html) {
-                html = `<div class="empty-box glass-panel">Queue empty</div>`;
+            currentBox.innerHTML = currentHtml;
+            queueBox.innerHTML = queueHtml;
+
+            enableSortable();
+        }
+
+        function enableSortable() {
+            const queueBox = document.getElementById("queueBox");
+
+            if (queueSortable) {
+                queueSortable.destroy();
+                queueSortable = null;
             }
 
-            queueBox.innerHTML = html;
+            const items = queueBox.querySelectorAll("[data-item-id]");
+            if (!items.length) return;
+
+            queueSortable = Sortable.create(queueBox, {
+                animation: 180,
+                handle: ".drag-handle",
+                ghostClass: "drag-ghost",
+                chosenClass: "drag-chosen",
+                dragClass: "drag-dragging",
+                onEnd: async () => {
+                    const orderedIds = Array.from(queueBox.querySelectorAll("[data-item-id]"))
+                        .map(el => Number(el.dataset.itemId));
+
+                    await fetch(`/api/rooms/${ROOM_CODE}/reorder_queue`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ ordered_ids: orderedIds })
+                    });
+
+                    refreshState();
+                }
+            });
         }
 
         async function manualPlay() {
