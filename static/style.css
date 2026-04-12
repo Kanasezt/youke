@@ -460,7 +460,7 @@ hr {
 
 .song-card {
     display: grid;
-    grid-template-columns: 26px 110px 1fr;
+    grid-template-columns: 110px 1fr;
     gap: 12px;
     align-items: center;
     padding: 12px;
@@ -481,6 +481,7 @@ hr {
     object-fit: cover;
     border-radius: 14px;
     box-shadow: 0 8px 18px rgba(0,0,0,.25);
+    display: block;
 }
 
 .song-text {
@@ -643,7 +644,7 @@ hr {
     }
 
     .song-card {
-        grid-template-columns: 24px 96px 1fr;
+        grid-template-columns: 96px 1fr;
     }
 
     .song-card img {
