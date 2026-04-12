@@ -109,47 +109,52 @@ def search_songs(query: str, limit: int = 20) -> list[dict]:
     if not q:
         return []
 
-    like_any = f"%{q}%"
-    like_prefix = f"{q}%"
+    terms = [t.strip() for t in q.split() if t.strip()]
+    if not terms:
+        return []
+
+    where_parts: list[str] = ["embed_ok = 1"]
+    params: list = []
+
+    # ทุก token ต้อง match อย่างน้อยใน title หรือ channel_name
+    for term in terms:
+        where_parts.append("(title ILIKE %s OR channel_name ILIKE %s)")
+        params.extend([f"%{term}%", f"%{term}%"])
+
+    full_q = q
+    full_prefix = f"{q}%"
+    full_any = f"%{q}%"
+
+    ranking_sql = """
+        CASE
+            WHEN title ILIKE %s THEN 500
+            WHEN title ILIKE %s THEN 350
+            WHEN title ILIKE %s THEN 220
+            WHEN channel_name ILIKE %s THEN 120
+            ELSE 0
+        END
+        + COALESCE(score, 0)
+    """
+    ranking_params = [full_q, full_prefix, full_any, full_any]
+
+    sql = f"""
+        SELECT
+            video_id,
+            title,
+            channel_name,
+            thumbnail,
+            score,
+            embed_ok,
+            {ranking_sql} AS final_rank
+        FROM karaoke_songs
+        WHERE {" AND ".join(where_parts)}
+        ORDER BY final_rank DESC, title ASC
+        LIMIT %s
+    """
 
     with db_connect() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT
-                    video_id,
-                    title,
-                    channel_name,
-                    thumbnail,
-                    score,
-                    embed_ok,
-                    CASE
-                        WHEN title ILIKE %s THEN 400
-                        WHEN title ILIKE %s THEN 250
-                        WHEN title ILIKE %s THEN 150
-                        WHEN channel_name ILIKE %s THEN 80
-                        ELSE 0
-                    END
-                    + COALESCE(score, 0) AS final_rank
-                FROM karaoke_songs
-                WHERE embed_ok = 1
-                  AND (
-                        title ILIKE %s
-                     OR channel_name ILIKE %s
-                  )
-                ORDER BY final_rank DESC, title ASC
-                LIMIT %s
-                """,
-                (
-                    q,
-                    like_prefix,
-                    like_any,
-                    like_any,
-                    like_any,
-                    like_any,
-                    limit,
-                ),
-            )
+            cur.execute(sql, ranking_params + params + [limit])
             rows = cur.fetchall()
 
     return [
@@ -180,6 +185,7 @@ def create_room():
         "current": None,
         "is_playing": False,
         "player_nonce": 0,
+        "next_item_id": 1,
     }
     return redirect(url_for("room_page", code=code))
 
@@ -294,7 +300,11 @@ def api_add_song(code: str):
                 "embedOk": 1,
             }
 
+    item_id = room["next_item_id"]
+    room["next_item_id"] += 1
+
     item = {
+        "itemId": item_id,
         "videoId": selected_song["videoId"],
         "title": selected_song["title"],
         "requestedBy": requested_by,
@@ -324,6 +334,35 @@ def api_add_song(code: str):
             "queue_count": len(room["queue"]),
         }
     )
+
+
+@app.route("/api/rooms/<code>/reorder_queue", methods=["POST"])
+def api_reorder_queue(code: str):
+    room = get_room(code)
+    if not room:
+        return jsonify({"error": "room not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    ordered_ids = data.get("ordered_ids")
+
+    if not isinstance(ordered_ids, list):
+        return jsonify({"error": "ordered_ids must be a list"}), 400
+
+    current_queue = room["queue"]
+    current_ids = [item["itemId"] for item in current_queue]
+
+    try:
+        ordered_ids_int = [int(x) for x in ordered_ids]
+    except Exception:
+        return jsonify({"error": "ordered_ids must be integers"}), 400
+
+    if sorted(current_ids) != sorted(ordered_ids_int):
+        return jsonify({"error": "queue ids mismatch"}), 400
+
+    item_map = {item["itemId"]: item for item in current_queue}
+    room["queue"] = [item_map[item_id] for item_id in ordered_ids_int]
+
+    return jsonify({"success": True, "queue_count": len(room["queue"])})
 
 
 @app.route("/api/rooms/<code>/play", methods=["POST"])
