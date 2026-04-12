@@ -320,6 +320,10 @@ hr {
     border-radius: 999px;
 }
 
+.queue-panel {
+    padding: 16px;
+}
+
 .player-panel {
     width: 100%;
     aspect-ratio: 16 / 9;
@@ -456,8 +460,8 @@ hr {
 
 .song-card {
     display: grid;
-    grid-template-columns: 110px 1fr;
-    gap: 14px;
+    grid-template-columns: 26px 110px 1fr;
+    gap: 12px;
     align-items: center;
     padding: 12px;
     border-radius: 20px;
@@ -537,6 +541,34 @@ hr {
     color: var(--text-soft);
 }
 
+.drag-handle {
+    font-size: 20px;
+    color: var(--orange-soft);
+    cursor: grab;
+    user-select: none;
+    text-align: center;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.drag-hint {
+    margin-bottom: 8px;
+}
+
+.drag-ghost {
+    opacity: 0.5;
+}
+
+.drag-chosen {
+    transform: scale(1.01);
+}
+
+.drag-dragging {
+    opacity: 0.8;
+}
+
 .mobile-page {
     min-height: 100vh;
     padding: 0 12px 24px;
@@ -596,7 +628,7 @@ hr {
     }
 
     .song-card {
-        grid-template-columns: 96px 1fr;
+        grid-template-columns: 24px 96px 1fr;
     }
 
     .song-card img {
