@@ -17,20 +17,44 @@
             </p>
 
             <div class="info-box">
-                <strong>Local IP:</strong> {{ local_ip }}
-                <div class="small muted">Open on PC with: http://{{ local_ip }}:5000/</div>
-            </div>
-
-            <div class="info-box">
                 <strong>Song database:</strong>
                 {% if db_exists %}
                     Ready
                 {% else %}
-                    Not found (put <code>youke_karaoke.db</code> next to <code>app.py</code>)
+                    Not configured
                 {% endif %}
             </div>
 
-            <form action="/create" method="post">
+            <div class="terms-box">
+                <div class="terms-title">Terms & Conditions</div>
+                <div class="terms-content">
+                    <p>
+                        YouKe Karaoke is provided solely for private, personal, and in-home entertainment use.
+                    </p>
+                    <p>
+                        This web app is currently intended only as a non-commercial queue and control interface for karaoke playback among family members, friends, or household guests.
+                    </p>
+                    <p>
+                        YouKe Karaoke is not currently licensed, approved, or confirmed by Google, YouTube, or any copyright owner for commercial operation, public performance, venue usage, paid access, or revenue-generating activities of any kind.
+                    </p>
+                    <p>
+                        Any individual, venue, organizer, host, company, or third party who uses this web app for commercial purposes, public activities, monetized events, business operations, rentals, paid karaoke services, or any other non-private use does so entirely at their own risk and shall be solely responsible for obtaining all necessary permissions, licenses, royalty clearances, and copyright compliance from the relevant rightsholders and applicable authorities.
+                    </p>
+                    <p>
+                        The creator, developer, operator, and distributor of YouKe Karaoke do not assume responsibility for any copyright infringement, licensing violation, public performance violation, monetization dispute, platform policy breach, or legal claim arising from any commercial or unauthorized use of this web app.
+                    </p>
+                    <p>
+                        By creating or using a room, you acknowledge and agree that you will use this service only in a lawful manner and that any commercial or public-use liability remains entirely with the user.
+                    </p>
+                </div>
+
+                <label class="terms-check">
+                    <input type="checkbox" id="acceptTerms">
+                    <span>I have read and agree to the Terms & Conditions above.</span>
+                </label>
+            </div>
+
+            <form action="/create" method="post" onsubmit="return validateTerms();">
                 <button type="submit" class="magic-btn pink">Create Room</button>
             </form>
 
@@ -42,5 +66,16 @@
             </form>
         </div>
     </div>
+
+    <script>
+        function validateTerms() {
+            const accepted = document.getElementById("acceptTerms").checked;
+            if (!accepted) {
+                alert("Please accept the Terms & Conditions before creating a room.");
+                return false;
+            }
+            return true;
+        }
+    </script>
 </body>
 </html>
