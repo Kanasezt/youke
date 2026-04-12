@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import random
 import re
-import socket
 import string
 from contextlib import contextmanager
 
@@ -46,18 +45,6 @@ def extract_video_id(value: str | None) -> str | None:
 
 def get_thumbnail(video_id: str) -> str:
     return f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
-
-
-def get_local_ip() -> str:
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-    except Exception:
-        ip = "127.0.0.1"
-    finally:
-        s.close()
-    return ip
 
 
 def get_room(code: str) -> dict | None:
@@ -179,8 +166,7 @@ def search_songs(query: str, limit: int = 20) -> list[dict]:
 
 @app.route("/")
 def index():
-    base_url = request.host_url.rstrip("/")
-    return render_template("index.html", local_ip=base_url, db_exists=db_ready())
+    return render_template("index.html", db_exists=db_ready())
 
 
 @app.route("/create", methods=["POST"])
@@ -218,7 +204,6 @@ def room_page(code: str):
         "room.html",
         code=code,
         base_url=base_url,
-        local_ip=base_url,
         db_exists=db_ready(),
     )
 
@@ -271,6 +256,7 @@ def api_song_search():
     except Exception as e:
         print(f"SEARCH ERROR: {e}")
         return jsonify({"error": str(e)}), 500
+
 
 @app.route("/api/rooms/<code>/add", methods=["POST"])
 def api_add_song(code: str):
