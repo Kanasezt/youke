@@ -493,6 +493,7 @@ hr {
     font-weight: bold;
     color: #fff6ea;
     word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 .song-sub {
@@ -541,15 +542,20 @@ hr {
     color: var(--text-soft);
 }
 
-.drag-handle {
-    font-size: 20px;
-    color: var(--orange-soft);
+.draggable-song {
     cursor: grab;
+    transition:
+        transform 0.16s ease,
+        box-shadow 0.16s ease,
+        outline-color 0.16s ease,
+        background 0.16s ease;
+    -webkit-user-select: none;
     user-select: none;
-    text-align: center;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
 }
 
-.drag-handle:active {
+.draggable-song:active {
     cursor: grabbing;
 }
 
@@ -558,15 +564,24 @@ hr {
 }
 
 .drag-ghost {
-    opacity: 0.5;
+    opacity: 0.42;
 }
 
 .drag-chosen {
     transform: scale(1.01);
+    box-shadow:
+        0 0 0 1px rgba(255,159,67,0.20),
+        0 0 20px rgba(255,159,67,0.12),
+        0 12px 28px rgba(0,0,0,0.28);
 }
 
 .drag-dragging {
-    opacity: 0.8;
+    opacity: 0.92;
+    transform: scale(1.015);
+    box-shadow:
+        0 0 0 1px rgba(255,159,67,0.30),
+        0 0 24px rgba(255,159,67,0.18),
+        0 14px 32px rgba(0,0,0,0.34);
 }
 
 .mobile-page {
