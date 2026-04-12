@@ -18,7 +18,7 @@
         </div>
 
         <div class="computer-layout">
-            <div class="main-area glass-panel">
+            <div class="main-area glass-panel sticky-panel">
                 <div id="playerPanel" class="player-panel">
                     <div id="player"></div>
                     <div id="playerOverlay" class="overlay-message hidden"></div>
@@ -38,20 +38,9 @@
                     <button class="magic-btn orange" onclick="manualSkip()">⏭ Skip</button>
                     <button class="magic-btn blue" onclick="toggleFullscreen()">⛶ Fullscreen</button>
                 </div>
-
-                <div class="computer-add-area">
-                    <div class="section-title">Database Status</div>
-                    <div class="small muted">
-                        {% if db_exists %}
-                            Song database connected. Use mobile to search and add songs.
-                        {% else %}
-                            Database not found. Put <code>youke_karaoke.db</code> next to <code>app.py</code>.
-                        {% endif %}
-                    </div>
-                </div>
             </div>
 
-            <div class="sidebar">
+            <div class="sidebar sidebar-scroll">
                 <div class="glass-panel mobile-link-panel">
                     <div class="section-title small-panel-title">Mobile Link</div>
                     <div class="small muted" id="mobileUrlText"></div>
