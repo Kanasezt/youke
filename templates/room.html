@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 </head>
 <body class="fantasy-bg">
     <div class="stars"></div>
@@ -51,7 +50,7 @@
 
                 <div class="glass-panel queue-panel">
                     <div class="section-title small-panel-title">Up Next</div>
-                    <div class="small muted drag-hint">Tap a song card for quick actions, or hold 0.8 second to drag.</div>
+                    <div class="small muted drag-hint">Tap a song card for quick actions.</div>
                     <div id="queueBox" class="queue-stack"></div>
                 </div>
             </div>
@@ -62,21 +61,14 @@
         const ROOM_CODE = "{{ code }}";
         const BASE_URL = "{{ base_url }}";
         const MOBILE_URL = `${BASE_URL}/mobile/${ROOM_CODE}`;
-        const HOLD_DELAY_MS = 800;
 
         let player = null;
         let ytReady = false;
         let lastNonce = -1;
         let currentVideoId = null;
         let currentIsPlaying = null;
-        let queueSortable = null;
-        let isDragging = false;
         let selectedQueueItemId = null;
-        let pendingState = null;
-        let holdTimer = null;
-        let holdTargetEl = null;
-        let holdArmedItemId = null;
-        let lastDragEndedAt = 0;
+        let quickActionLockUntil = 0;
 
         document.getElementById("mobileUrlText").textContent = MOBILE_URL;
 
@@ -162,14 +154,21 @@
                 .then(() => refreshState());
         }
 
+        function lockQuickActions(ms = 5000) {
+            quickActionLockUntil = Date.now() + ms;
+        }
+
+        function isQuickActionsLocked() {
+            return Date.now() < quickActionLockUntil;
+        }
+
         async function refreshState() {
             const res = await fetch(`/api/rooms/${ROOM_CODE}/state`);
             const data = await res.json();
 
             renderCurrent(data.current);
 
-            if (isDragging) {
-                pendingState = data;
+            if (isQuickActionsLocked()) {
                 return;
             }
 
@@ -261,7 +260,6 @@
             if (!queue.length) {
                 selectedQueueItemId = null;
                 queueBox.innerHTML = `<div class="empty-box glass-panel">Queue empty</div>`;
-                destroySortable();
                 return;
             }
 
@@ -272,8 +270,7 @@
 
             queueBox.innerHTML = queue.map((item, idx) => {
                 const isSelected = item.itemId === selectedQueueItemId;
-                const isHoldArmed = item.itemId === holdArmedItemId;
-                const cardClasses = `song-card sparkle-card queue-item-draggable draggable-song${isSelected ? " queue-item-selected" : ""}${isHoldArmed ? " drag-hold-ready" : ""}`;
+                const cardClasses = `song-card sparkle-card queue-item-draggable draggable-song${isSelected ? " queue-item-selected" : ""}`;
                 return `
                     <div class="${cardClasses}" data-item-id="${item.itemId}">
                         <img src="${escapeHtml(item.thumbnail)}" alt="thumbnail">
@@ -288,7 +285,7 @@
             }).join("");
 
             attachQueueCardEvents();
-            enableSortable();
+            attachQuickActionEvents();
         }
 
         function renderQuickActions(itemId, queueIndex, queueLength) {
@@ -332,96 +329,42 @@
                 const itemId = Number(card.dataset.itemId);
 
                 card.addEventListener("click", (event) => {
-                    if (Date.now() - lastDragEndedAt < 250) return;
                     if (event.target.closest(".quick-actions-row")) return;
                     selectedQueueItemId = (selectedQueueItemId === itemId) ? null : itemId;
-                    refreshState();
-                });
-
-                card.addEventListener("pointerdown", (event) => {
-                    if (event.target.closest(".quick-actions-row")) return;
-                    clearHoldState();
-                    holdTargetEl = card;
-                    holdArmedItemId = null;
-                
-                    holdTimer = setTimeout(() => {
-                        if (holdTargetEl === card && !isDragging) {
-                            holdArmedItemId = itemId;
-                            card.classList.add("drag-hold-ready");
-                        }
-                    }, HOLD_DELAY_MS);
-                });
-
-                ["pointerup", "pointercancel", "pointerleave"].forEach(evt => {
-                    card.addEventListener(evt, () => {
-                        if (!isDragging && holdTargetEl === card) {
-                            clearHoldState();
-                        }
-                    });
+                    renderQueueFromDomState();
                 });
             });
         }
 
-        function clearHoldState(clearArmed = true) {
-            clearTimeout(holdTimer);
-            holdTimer = null;
-        
-            if (holdTargetEl) {
-                holdTargetEl.classList.remove("drag-hold-ready");
-            }
-        
-            holdTargetEl = null;
-        
-            if (clearArmed) {
-                holdArmedItemId = null;
-            }
-        }
+        function attachQuickActionEvents() {
+            const actionContainers = document.querySelectorAll("#queueBox .quick-actions-row");
+            const selects = document.querySelectorAll("#queueBox .quick-action-select");
 
-        function destroySortable() {
-            if (queueSortable) {
-                queueSortable.destroy();
-                queueSortable = null;
-            }
-        }
-
-        function enableSortable() {
-            const queueBox = document.getElementById("queueBox");
-            destroySortable();
-
-            const items = queueBox.querySelectorAll("[data-item-id]");
-            if (!items.length) return;
-
-            queueSortable = Sortable.create(queueBox, {
-                animation: 140,
-                draggable: ".queue-item-draggable",
-                ghostClass: "drag-ghost",
-                chosenClass: "drag-chosen",
-                dragClass: "drag-dragging",
-                delay: HOLD_DELAY_MS,
-                delayOnTouchOnly: false,
-                touchStartThreshold: 6,
-                fallbackTolerance: 6,
-                onStart: () => {
-                    isDragging = true;
-                    clearTimeout(holdTimer);
-                    holdTimer = null;
-                },
-                onEnd: async () => {
-                    const orderedIds = Array.from(queueBox.querySelectorAll("[data-item-id]"))
-                        .map(el => Number(el.dataset.itemId));
-                
-                    await sendReorder(orderedIds);
-                
-                    isDragging = false;
-                    lastDragEndedAt = Date.now();
-                    clearHoldState(true);
-                
-                    if (pendingState) {
-                        pendingState = null;
-                    }
-                    refreshState();
-                }
+            actionContainers.forEach(el => {
+                ["pointerdown", "mousedown", "touchstart", "click"].forEach(evt => {
+                    el.addEventListener(evt, () => lockQuickActions(5000));
+                });
             });
+
+            selects.forEach(el => {
+                el.addEventListener("focus", () => lockQuickActions(10000));
+                el.addEventListener("pointerdown", () => lockQuickActions(10000));
+                el.addEventListener("mousedown", () => lockQuickActions(10000));
+                el.addEventListener("touchstart", () => lockQuickActions(10000));
+                el.addEventListener("click", () => lockQuickActions(10000));
+                el.addEventListener("blur", () => {
+                    setTimeout(() => {
+                        quickActionLockUntil = 0;
+                        refreshState();
+                    }, 150);
+                });
+            });
+        }
+
+        async function renderQueueFromDomState() {
+            const res = await fetch(`/api/rooms/${ROOM_CODE}/state`);
+            const data = await res.json();
+            renderQueue(data.queue || []);
         }
 
         async function sendReorder(orderedIds) {
@@ -433,6 +376,8 @@
         }
 
         async function moveQueueItem(itemId, mode) {
+            lockQuickActions(3000);
+
             const queueBox = document.getElementById("queueBox");
             const orderedIds = Array.from(queueBox.querySelectorAll("[data-item-id]"))
                 .map(el => Number(el.dataset.itemId));
@@ -449,10 +394,13 @@
             }
 
             await sendReorder(orderedIds);
+            quickActionLockUntil = 0;
             refreshState();
         }
 
         async function handlePositionChange(itemId, targetIndexValue) {
+            lockQuickActions(3000);
+
             if (!targetIndexValue) return;
 
             const targetIndex = Number(targetIndexValue);
@@ -469,6 +417,7 @@
             orderedIds.splice(targetIndex, 0, moved);
 
             await sendReorder(orderedIds);
+            quickActionLockUntil = 0;
             refreshState();
         }
 
