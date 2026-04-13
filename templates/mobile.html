@@ -55,6 +55,7 @@
         let pendingState = null;
         let holdTimer = null;
         let holdTargetEl = null;
+        let holdArmedItemId = null;
         let lastDragEndedAt = 0;
 
         function loadSingerName() {
@@ -206,7 +207,8 @@
 
             queueBox.innerHTML = queue.map((item, idx) => {
                 const isSelected = item.itemId === selectedQueueItemId;
-                const cardClasses = `song-card sparkle-card queue-item-draggable draggable-song${isSelected ? " queue-item-selected" : ""}`;
+                const isHoldArmed = item.itemId === holdArmedItemId;
+                const cardClasses = `song-card sparkle-card queue-item-draggable draggable-song${isSelected ? " queue-item-selected" : ""}${isHoldArmed ? " drag-hold-ready" : ""}`;
                 return `
                     <div class="${cardClasses}" data-item-id="${item.itemId}">
                         <img src="${escapeHtml(item.thumbnail)}" alt="thumbnail">
@@ -275,8 +277,11 @@
                     if (event.target.closest(".quick-actions-row")) return;
                     clearHoldState();
                     holdTargetEl = card;
+                    holdArmedItemId = null;
+                
                     holdTimer = setTimeout(() => {
                         if (holdTargetEl === card && !isDragging) {
+                            holdArmedItemId = itemId;
                             card.classList.add("drag-hold-ready");
                         }
                     }, HOLD_DELAY_MS);
@@ -292,13 +297,19 @@
             });
         }
 
-        function clearHoldState() {
+        function clearHoldState(clearArmed = true) {
             clearTimeout(holdTimer);
             holdTimer = null;
+        
             if (holdTargetEl) {
                 holdTargetEl.classList.remove("drag-hold-ready");
             }
+        
             holdTargetEl = null;
+        
+            if (clearArmed) {
+                holdArmedItemId = null;
+            }
         }
 
         function destroySortable() {
@@ -327,20 +338,24 @@
                 fallbackTolerance: 6,
                 onStart: () => {
                     isDragging = true;
-                    clearHoldState();
+                    clearTimeout(holdTimer);
+                    holdTimer = null;
                 },
                 onEnd: async () => {
                     const orderedIds = Array.from(queueBox.querySelectorAll("[data-item-id]"))
                         .map(el => Number(el.dataset.itemId));
-
+                
                     await sendReorder(orderedIds);
-
+                
                     isDragging = false;
                     lastDragEndedAt = Date.now();
-
+                    clearHoldState(true);
+                
                     if (pendingState) {
                         pendingState = null;
                     }
+                    refreshState();
+                }
                     refreshState();
                 }
             });
