@@ -300,30 +300,50 @@ hr {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    min-height: 0;
 }
 
 .sidebar-scroll {
-    max-height: calc(100vh - 40px);
-    overflow-y: auto;
-    padding-right: 6px;
-}
-
-.sidebar-scroll::-webkit-scrollbar {
-    width: 10px;
-}
-
-.sidebar-scroll::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.05);
-    border-radius: 999px;
-}
-
-.sidebar-scroll::-webkit-scrollbar-thumb {
-    background: rgba(255,159,67,0.45);
-    border-radius: 999px;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
 }
 
 .queue-panel {
     padding: 16px;
+}
+
+.queue-scroll-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.current-sticky-box {
+    position: sticky;
+    top: 18px;
+    z-index: 8;
+}
+
+.queue-scroll-box {
+    max-height: calc(100vh - 380px);
+    overflow-y: auto;
+    padding-right: 6px;
+    overscroll-behavior: contain;
+}
+
+.queue-scroll-box::-webkit-scrollbar {
+    width: 10px;
+}
+
+.queue-scroll-box::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.05);
+    border-radius: 999px;
+}
+
+.queue-scroll-box::-webkit-scrollbar-thumb {
+    background: rgba(255,159,67,0.45);
+    border-radius: 999px;
 }
 
 .player-panel {
@@ -559,10 +579,6 @@ hr {
     touch-action: manipulation;
 }
 
-.draggable-song:active {
-    cursor: grabbing;
-}
-
 .queue-item-selected {
     outline: 2px solid rgba(255, 159, 67, 0.34);
     box-shadow:
@@ -571,43 +587,8 @@ hr {
         0 12px 28px rgba(0,0,0,0.28);
 }
 
-.drag-hold-ready {
-    outline: 2px solid rgba(255, 159, 67, 0.65);
-    box-shadow:
-        0 0 0 2px rgba(255,159,67,0.38),
-        0 0 24px rgba(255,159,67,0.40),
-        0 0 50px rgba(255,122,0,0.30),
-        0 18px 38px rgba(0,0,0,0.36);
-    transform: scale(1.01);
-}
-
 .drag-hint {
     margin-bottom: 8px;
-}
-
-.drag-ghost {
-    opacity: 0.38;
-}
-
-.drag-chosen {
-    outline: 2px solid rgba(255, 159, 67, 0.75);
-    box-shadow:
-        0 0 0 2px rgba(255,159,67,0.42),
-        0 0 26px rgba(255,159,67,0.45),
-        0 0 56px rgba(255,122,0,0.32),
-        0 18px 40px rgba(0,0,0,0.38);
-    transform: scale(1.02);
-}
-
-.drag-dragging {
-    opacity: 0.96;
-    outline: 2px solid rgba(255, 159, 67, 0.82);
-    box-shadow:
-        0 0 0 2px rgba(255,159,67,0.50),
-        0 0 30px rgba(255,159,67,0.55),
-        0 0 64px rgba(255,122,0,0.36),
-        0 22px 46px rgba(0,0,0,0.42);
-    transform: scale(1.025);
 }
 
 .quick-actions-row {
@@ -678,6 +659,33 @@ hr {
     padding: 18px;
 }
 
+.mobile-current-box {
+    position: sticky;
+    top: 10px;
+    z-index: 8;
+}
+
+.mobile-queue-scroll-box {
+    max-height: 44vh;
+    overflow-y: auto;
+    padding-right: 4px;
+    overscroll-behavior: contain;
+}
+
+.mobile-queue-scroll-box::-webkit-scrollbar {
+    width: 8px;
+}
+
+.mobile-queue-scroll-box::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.05);
+    border-radius: 999px;
+}
+
+.mobile-queue-scroll-box::-webkit-scrollbar-thumb {
+    background: rgba(255,159,67,0.45);
+    border-radius: 999px;
+}
+
 .button-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -693,10 +701,8 @@ hr {
         position: static;
     }
 
-    .sidebar-scroll {
-        max-height: none;
-        overflow: visible;
-        padding-right: 0;
+    .queue-scroll-box {
+        max-height: 48vh;
     }
 }
 
@@ -741,5 +747,13 @@ hr {
 
     .terms-content p {
         font-size: 14px;
+    }
+
+    .mobile-current-box {
+        top: 8px;
+    }
+
+    .mobile-queue-scroll-box {
+        max-height: 42vh;
     }
 }
