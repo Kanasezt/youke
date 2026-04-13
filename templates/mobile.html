@@ -322,10 +322,10 @@
         function enableSortable() {
             const queueBox = document.getElementById("queueBox");
             destroySortable();
-
+        
             const items = queueBox.querySelectorAll("[data-item-id]");
             if (!items.length) return;
-
+        
             queueSortable = Sortable.create(queueBox, {
                 animation: 140,
                 draggable: ".queue-item-draggable",
@@ -344,18 +344,16 @@
                 onEnd: async () => {
                     const orderedIds = Array.from(queueBox.querySelectorAll("[data-item-id]"))
                         .map(el => Number(el.dataset.itemId));
-                
+        
                     await sendReorder(orderedIds);
-                
+        
                     isDragging = false;
                     lastDragEndedAt = Date.now();
                     clearHoldState(true);
-                
+        
                     if (pendingState) {
                         pendingState = null;
                     }
-                    refreshState();
-                }
                     refreshState();
                 }
             });
