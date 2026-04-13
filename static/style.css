@@ -33,9 +33,9 @@ html, body {
 
 body.fantasy-bg {
     background:
-        radial-gradient(circle at top left, rgba(255,122,0,0.16), transparent 24%),
-        radial-gradient(circle at top right, rgba(255,190,122,0.08), transparent 26%),
-        radial-gradient(circle at bottom right, rgba(255,122,0,0.10), transparent 24%),
+        radial-gradient(circle at top left, rgba(255, 122, 0, 0.16), transparent 24%),
+        radial-gradient(circle at top right, rgba(255, 190, 122, 0.08), transparent 26%),
+        radial-gradient(circle at bottom right, rgba(255, 122, 0, 0.10), transparent 24%),
         linear-gradient(135deg, var(--bg1), var(--bg2), var(--bg3));
     background-attachment: fixed;
 }
@@ -49,10 +49,8 @@ body.fantasy-bg {
         radial-gradient(1.5px 1.5px at 145px 95px, rgba(255,190,122,.45), transparent),
         radial-gradient(2px 2px at 315px 175px, rgba(255,255,255,.55), transparent);
     background-repeat: repeat;
-    opacity: 0.7;
+    opacity: 0.70;
 }
-
-/* center layout */
 
 .page-center {
     min-height: 100vh;
@@ -62,14 +60,12 @@ body.fantasy-bg {
     padding: 24px;
 }
 
-/* glass panel */
-
 .glass-card,
 .glass-panel {
     background: linear-gradient(
         180deg,
-        rgba(38,38,38,0.80),
-        rgba(20,20,20,0.82)
+        rgba(38, 38, 38, 0.80),
+        rgba(20, 20, 20, 0.82)
     );
     border: 1px solid var(--glass-border);
     backdrop-filter: blur(14px);
@@ -88,16 +84,14 @@ body.fantasy-bg {
     max-width: 680px;
 }
 
-/* title */
-
 .glow-title {
     text-align: center;
     font-size: 38px;
     margin: 0 0 14px;
     color: #fff5ea;
     text-shadow:
-        0 0 8px rgba(255,159,67,0.28),
-        0 0 18px rgba(255,122,0,0.18);
+        0 0 8px rgba(255, 159, 67, 0.28),
+        0 0 18px rgba(255, 122, 0, 0.18);
 }
 
 .intro-text {
@@ -105,8 +99,6 @@ body.fantasy-bg {
     line-height: 1.6;
     margin-bottom: 18px;
 }
-
-/* boxes */
 
 .info-box,
 .terms-box {
@@ -120,8 +112,6 @@ body.fantasy-bg {
     padding: 14px 16px;
     margin: 16px 0 18px;
 }
-
-/* terms */
 
 .terms-title {
     font-size: 22px;
@@ -148,8 +138,6 @@ body.fantasy-bg {
     height: 18px;
 }
 
-/* form */
-
 input,
 select {
     width: 100%;
@@ -161,18 +149,6 @@ select {
     font-size: 16px;
 }
 
-input::placeholder {
-    color: rgba(255,255,255,0.42);
-}
-
-input:focus,
-select:focus {
-    border-color: rgba(255,159,67,0.5);
-    box-shadow: 0 0 0 3px rgba(255,122,0,0.1);
-}
-
-/* buttons */
-
 .magic-btn {
     border: none;
     border-radius: 16px;
@@ -180,11 +156,6 @@ select:focus {
     font-size: 16px;
     font-weight: bold;
     cursor: pointer;
-    transition: transform .15s ease;
-}
-
-.magic-btn:hover {
-    transform: translateY(-1px);
 }
 
 .magic-btn.pink {
@@ -197,17 +168,13 @@ select:focus {
     background: linear-gradient(135deg, #cfcfcf, #8f8f8f);
 }
 
-.magic-btn.green {
-    color: #161616;
-    background: linear-gradient(135deg, #ffd08e, #ff9f43);
+hr {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    margin: 18px 0;
 }
 
-.magic-btn.orange {
-    color: #1a1208;
-    background: linear-gradient(135deg, #ffc988, #ff7a00);
-}
-
-/* footer compliance */
+/* ===== Compliance footer (ADDED ONLY) ===== */
 
 .compliance-footer {
     margin-top: 18px;
@@ -232,34 +199,4 @@ select:focus {
     font-size: 13px;
     line-height: 1.6;
     color: var(--text-soft);
-}
-
-/* misc */
-
-.small {
-    font-size: 13px;
-}
-
-.muted {
-    color: var(--text-soft);
-}
-
-hr {
-    border: none;
-    border-top: 1px solid rgba(255,255,255,0.08);
-    margin: 18px 0;
-}
-
-/* responsive */
-
-@media (max-width: 720px) {
-
-    .glow-title {
-        font-size: 28px;
-    }
-
-    .terms-content p {
-        font-size: 14px;
-    }
-
 }
