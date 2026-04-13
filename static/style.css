@@ -87,7 +87,82 @@ body.fantasy-bg {
 
 .narrow {
     width: 100%;
-    max-width: 680px;
+    max-width: 920px;
+}
+
+.terms-layout-card {
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+}
+
+.terms-scroll-box {
+    max-height: 340px;
+    overflow-y: auto;
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(
+        180deg,
+        rgba(255,255,255,0.04),
+        rgba(255,255,255,0.02)
+    );
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+}
+
+.terms-scroll-box::-webkit-scrollbar,
+.terms-layout-card::-webkit-scrollbar {
+    width: 10px;
+}
+
+.terms-scroll-box::-webkit-scrollbar-track,
+.terms-layout-card::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.05);
+    border-radius: 999px;
+}
+
+.terms-scroll-box::-webkit-scrollbar-thumb,
+.terms-layout-card::-webkit-scrollbar-thumb {
+    background: rgba(255,159,67,0.45);
+    border-radius: 999px;
+}
+
+.terms-scroll-hint {
+    margin-top: 10px;
+}
+
+.join-form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+}
+
+.join-form .magic-btn {
+    white-space: nowrap;
+}
+
+.terms-check input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+    .narrow {
+        max-width: 100%;
+    }
+
+    .terms-layout-card {
+        max-height: none;
+        overflow: visible;
+    }
+
+    .terms-scroll-box {
+        max-height: 300px;
+    }
+
+    .join-form {
+        grid-template-columns: 1fr;
+    }
 }
 
 .glow-title {
