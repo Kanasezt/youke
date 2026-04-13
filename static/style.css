@@ -162,7 +162,8 @@ body.fantasy-bg {
     margin-top: 12px;
 }
 
-input {
+input,
+select {
     width: 100%;
     padding: 14px 16px;
     border-radius: 14px;
@@ -178,7 +179,8 @@ input::placeholder {
     color: rgba(255,255,255,0.42);
 }
 
-input:focus {
+input:focus,
+select:focus {
     border-color: rgba(255,159,67,0.50);
     box-shadow: 0 0 0 3px rgba(255,122,0,0.10);
     background: rgba(255,255,255,0.07);
@@ -461,7 +463,7 @@ hr {
 .song-card {
     display: grid;
     grid-template-columns: 110px 1fr;
-    gap: 12px;
+    gap: 14px;
     align-items: center;
     padding: 12px;
     border-radius: 20px;
@@ -544,12 +546,13 @@ hr {
 }
 
 .draggable-song {
-    cursor: grab;
+    cursor: pointer;
     transition:
         transform 0.16s ease,
         box-shadow 0.16s ease,
         outline-color 0.16s ease,
-        background 0.16s ease;
+        background 0.16s ease,
+        border-color 0.16s ease;
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
@@ -560,29 +563,97 @@ hr {
     cursor: grabbing;
 }
 
+.queue-item-selected {
+    outline: 2px solid rgba(255, 159, 67, 0.34);
+    box-shadow:
+        0 0 0 1px rgba(255,159,67,0.18),
+        0 0 18px rgba(255,159,67,0.10),
+        0 12px 28px rgba(0,0,0,0.28);
+}
+
+.drag-hold-ready {
+    outline: 2px solid rgba(255, 159, 67, 0.65);
+    box-shadow:
+        0 0 0 2px rgba(255,159,67,0.38),
+        0 0 24px rgba(255,159,67,0.40),
+        0 0 50px rgba(255,122,0,0.30),
+        0 18px 38px rgba(0,0,0,0.36);
+    transform: scale(1.01);
+}
+
 .drag-hint {
     margin-bottom: 8px;
 }
 
 .drag-ghost {
-    opacity: 0.42;
+    opacity: 0.38;
 }
 
 .drag-chosen {
-    transform: scale(1.01);
+    outline: 2px solid rgba(255, 159, 67, 0.75);
     box-shadow:
-        0 0 0 1px rgba(255,159,67,0.20),
-        0 0 20px rgba(255,159,67,0.12),
-        0 12px 28px rgba(0,0,0,0.28);
+        0 0 0 2px rgba(255,159,67,0.42),
+        0 0 26px rgba(255,159,67,0.45),
+        0 0 56px rgba(255,122,0,0.32),
+        0 18px 40px rgba(0,0,0,0.38);
+    transform: scale(1.02);
 }
 
 .drag-dragging {
-    opacity: 0.92;
-    transform: scale(1.015);
+    opacity: 0.96;
+    outline: 2px solid rgba(255, 159, 67, 0.82);
     box-shadow:
-        0 0 0 1px rgba(255,159,67,0.30),
-        0 0 24px rgba(255,159,67,0.18),
-        0 14px 32px rgba(0,0,0,0.34);
+        0 0 0 2px rgba(255,159,67,0.50),
+        0 0 30px rgba(255,159,67,0.55),
+        0 0 64px rgba(255,122,0,0.36),
+        0 22px 46px rgba(0,0,0,0.42);
+    transform: scale(1.025);
+}
+
+.quick-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    align-items: center;
+}
+
+.quick-action-btn {
+    border: none;
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #1a1208;
+    background: linear-gradient(135deg, #ffd08e, #ff9f43);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.20);
+}
+
+.quick-action-btn.secondary {
+    color: #181818;
+    background: linear-gradient(135deg, #d8d8d8, #a8a8a8);
+}
+
+.quick-action-select-wrap {
+    min-width: 120px;
+    flex: 1 1 120px;
+}
+
+.quick-action-select {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.10);
+    outline: none;
+    background: rgba(255,255,255,0.08);
+    color: var(--white);
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.quick-action-select option {
+    color: #111;
 }
 
 .mobile-page {
