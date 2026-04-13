@@ -1,455 +1,384 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>YouKe Karaoke - Room {{ code }}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/static/style.css">
-    <script src="https://www.youtube.com/iframe_api"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<meta charset="utf-8">
+<title>YouKe Karaoke - Room {{ code }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="stylesheet" href="/static/style.css">
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+<style>
+
+.sidebar {
+    display:flex;
+    flex-direction:column;
+    height:calc(100vh - 120px);
+}
+
+.now-playing-box{
+    position:sticky;
+    top:0;
+    z-index:10;
+}
+
+.queue-scroll{
+    overflow-y:auto;
+    padding-right:6px;
+}
+
+.queue-scroll::-webkit-scrollbar{
+    width:10px;
+}
+
+.queue-scroll::-webkit-scrollbar-track{
+    background:rgba(255,255,255,0.05);
+    border-radius:999px;
+}
+
+.queue-scroll::-webkit-scrollbar-thumb{
+    background:rgba(255,159,67,0.45);
+    border-radius:999px;
+}
+
+</style>
+
 </head>
+
 <body class="fantasy-bg">
-    <div class="stars"></div>
-
-    <div class="computer-page">
-        <div class="page-topbar">
-            <div class="topbar-title">🎤 YouKe</div>
-            <div class="room-badge">Room {{ code }}</div>
-        </div>
-
-        <div class="computer-layout">
-            <div class="main-area glass-panel sticky-panel">
-                <div id="playerPanel" class="player-panel">
-                    <div id="player"></div>
-                    <div id="playerOverlay" class="overlay-message hidden"></div>
-
-                    <div class="video-qr-overlay">
-                        <div class="video-qr-title">Scan to Search Song</div>
-                        <div id="qrcode" class="video-qr-box"></div>
-                    </div>
-
-                    <button id="fullscreenBtn" class="fullscreen-fab" onclick="toggleFullscreen()" title="Fullscreen">
-                        ⛶
-                    </button>
-                </div>
-
-                <div class="button-row left-buttons">
-                    <button class="magic-btn green" onclick="manualPlay()">▶ Play</button>
-                    <button class="magic-btn orange" onclick="manualSkip()">⏭ Skip</button>
-                    <button class="magic-btn blue" onclick="toggleFullscreen()">⛶ Fullscreen</button>
-                </div>
-            </div>
-
-            <div class="sidebar sidebar-scroll">
-                <div class="glass-panel mobile-link-panel">
-                    <div class="section-title small-panel-title">Mobile Link</div>
-                    <div class="small muted" id="mobileUrlText"></div>
-                </div>
-
-                <div id="currentBox" class="queue-stack"></div>
-
-                <div class="glass-panel queue-panel">
-                    <div class="section-title small-panel-title">Up Next</div>
-                    <div class="small muted drag-hint">Tap a song card for quick actions.</div>
-                    <div id="queueBox" class="queue-stack"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const ROOM_CODE = "{{ code }}";
-        const BASE_URL = "{{ base_url }}";
-        const MOBILE_URL = `${BASE_URL}/mobile/${ROOM_CODE}`;
-
-        let player = null;
-        let ytReady = false;
-        let lastNonce = -1;
-        let currentVideoId = null;
-        let currentIsPlaying = null;
-        let selectedQueueItemId = null;
-        let quickActionLockUntil = 0;
-
-        document.getElementById("mobileUrlText").textContent = MOBILE_URL;
-
-        const qrCanvas = document.createElement("canvas");
-        document.getElementById("qrcode").appendChild(qrCanvas);
-        QRCode.toCanvas(qrCanvas, MOBILE_URL, { width: 120 }, function (err) {
-            if (err) console.error(err);
-        });
-
-        function setOverlay(text, show = true) {
-            const overlay = document.getElementById("playerOverlay");
-            overlay.textContent = text || "";
-            overlay.classList.toggle("hidden", !show);
-        }
-
-        async function toggleFullscreen() {
-            const panel = document.getElementById("playerPanel");
-
-            try {
-                if (!document.fullscreenElement) {
-                    await panel.requestFullscreen();
-                } else {
-                    await document.exitFullscreen();
-                }
-            } catch (err) {
-                console.error("fullscreen error:", err);
-            }
-        }
-
-        document.addEventListener("fullscreenchange", () => {
-            const btn = document.getElementById("fullscreenBtn");
-            if (document.fullscreenElement) {
-                btn.textContent = "⤫";
-                btn.title = "Exit Fullscreen";
-            } else {
-                btn.textContent = "⛶";
-                btn.title = "Fullscreen";
-            }
-        });
-
-        function onYouTubeIframeAPIReady() {
-            player = new YT.Player("player", {
-                width: "100%",
-                height: "100%",
-                videoId: "",
-                playerVars: {
-                    autoplay: 1,
-                    rel: 0,
-                    modestbranding: 1,
-                    fs: 0
-                },
-                events: {
-                    onReady: () => {
-                        ytReady = true;
-                        refreshState();
-                    },
-                    onStateChange: onPlayerStateChange,
-                    onError: onPlayerError
-                }
-            });
-        }
-
-        function onPlayerStateChange(event) {
-            if (!window.YT) return;
-
-            if (event.data === YT.PlayerState.PLAYING) {
-                setOverlay("", false);
-            }
-
-            if (event.data === YT.PlayerState.ENDED) {
-                fetch(`/api/rooms/${ROOM_CODE}/skip`, { method: "POST" })
-                    .then(r => r.json())
-                    .then(() => refreshState());
-            }
-        }
-
-        function onPlayerError(event) {
-            console.log("YT player error:", event.data);
-            setOverlay("This video cannot be played or embedded. Skipping...", true);
-
-            fetch(`/api/rooms/${ROOM_CODE}/skip`, { method: "POST" })
-                .then(r => r.json())
-                .then(() => refreshState());
-        }
-
-        function lockQuickActions(ms = 5000) {
-            quickActionLockUntil = Date.now() + ms;
-        }
-
-        function isQuickActionsLocked() {
-            return Date.now() < quickActionLockUntil;
-        }
-
-        async function refreshState() {
-            const res = await fetch(`/api/rooms/${ROOM_CODE}/state`);
-            const data = await res.json();
-
-            renderCurrent(data.current);
-
-            if (isQuickActionsLocked()) {
-                return;
-            }
-
-            renderQueue(data.queue || []);
-
-            if (!ytReady || !player) return;
-
-            const current = data.current;
-            const nonce = data.player_nonce;
-            const shouldPlay = data.is_playing;
-
-            if (!current) {
-                currentVideoId = null;
-                currentIsPlaying = false;
-                setOverlay("No song playing", true);
-                return;
-            }
-
-            if (nonce !== lastNonce || current.videoId !== currentVideoId) {
-                lastNonce = nonce;
-                currentVideoId = current.videoId;
-                currentIsPlaying = shouldPlay;
-
-                setOverlay("Loading YouKe song...", true);
-
-                try {
-                    player.loadVideoById(current.videoId);
-                } catch (err) {
-                    console.error("loadVideoById error:", err);
-                }
-
-                setTimeout(() => {
-                    try {
-                        if (shouldPlay) {
-                            player.playVideo();
-                        }
-                    } catch (err) {
-                        console.error(err);
-                    }
-                }, 700);
-
-                setTimeout(() => {
-                    try {
-                        if (shouldPlay && player.getPlayerState() !== YT.PlayerState.PLAYING) {
-                            setOverlay("Autoplay blocked. Click Play once on computer screen.", true);
-                        }
-                    } catch (err) {
-                        console.error(err);
-                    }
-                }, 1500);
-
-                return;
-            }
-
-            if (shouldPlay !== currentIsPlaying) {
-                currentIsPlaying = shouldPlay;
-                try {
-                    if (shouldPlay) {
-                        player.playVideo();
-                    }
-                } catch (err) {
-                    console.error(err);
-                }
-            }
-        }
-
-        function renderCurrent(current) {
-            const currentBox = document.getElementById("currentBox");
-
-            if (current) {
-                currentBox.innerHTML = `
-                    <div class="song-card current-song sparkle-card">
-                        <img src="${escapeHtml(current.thumbnail)}" alt="thumbnail">
-                        <div class="song-text">
-                            <div class="song-pill now-pill">NOW PLAYING</div>
-                            <div class="song-title">${escapeHtml(current.title || current.videoId)}</div>
-                            <div class="song-sub">Singer : ${escapeHtml(current.requestedBy || "Guest")}</div>
-                        </div>
-                    </div>
-                `;
-            } else {
-                currentBox.innerHTML = `<div class="empty-box glass-panel">No song playing</div>`;
-            }
-        }
-
-        function renderQueue(queue) {
-            const queueBox = document.getElementById("queueBox");
-
-            if (!queue.length) {
-                selectedQueueItemId = null;
-                queueBox.innerHTML = `<div class="empty-box glass-panel">Queue empty</div>`;
-                return;
-            }
-
-            const exists = queue.some(item => item.itemId === selectedQueueItemId);
-            if (!exists) {
-                selectedQueueItemId = null;
-            }
-
-            queueBox.innerHTML = queue.map((item, idx) => {
-                const isSelected = item.itemId === selectedQueueItemId;
-                const cardClasses = `song-card sparkle-card queue-item-draggable draggable-song${isSelected ? " queue-item-selected" : ""}`;
-                return `
-                    <div class="${cardClasses}" data-item-id="${item.itemId}">
-                        <img src="${escapeHtml(item.thumbnail)}" alt="thumbnail">
-                        <div class="song-text">
-                            <div class="song-pill result-pill">NEXT ${idx + 1}</div>
-                            <div class="song-title">${escapeHtml(item.title || item.videoId)}</div>
-                            <div class="song-sub">Singer : ${escapeHtml(item.requestedBy || "Guest")}</div>
-                            ${isSelected ? renderQuickActions(item.itemId, idx, queue.length) : ""}
-                        </div>
-                    </div>
-                `;
-            }).join("");
-
-            attachQueueCardEvents();
-            attachQuickActionEvents();
-        }
-
-        function renderQuickActions(itemId, queueIndex, queueLength) {
-            const options = buildPositionOptions(queueIndex, queueLength);
-
-            return `
-                <div class="quick-actions-row" onclick="event.stopPropagation()">
-                    <button class="quick-action-btn" onclick="moveQueueItem(${itemId}, 'next')">Next song</button>
-                    <button class="quick-action-btn secondary" onclick="moveQueueItem(${itemId}, 'last')">Last song</button>
-                    ${
-                        options.length
-                            ? `<div class="quick-action-select-wrap">
-                                    <select class="quick-action-select" onchange="handlePositionChange(${itemId}, this.value)">
-                                        <option value="">Move to...</option>
-                                        ${options.map(opt => `<option value="${opt.targetIndex}">${opt.label}</option>`).join("")}
-                                    </select>
-                               </div>`
-                            : ``
-                    }
-                </div>
-            `;
-        }
-
-        function buildPositionOptions(queueIndex, queueLength) {
-            const options = [];
-            for (let overallPos = 3; overallPos <= queueLength; overallPos++) {
-                const targetIndex = overallPos - 2;
-                if (targetIndex === queueIndex) continue;
-                options.push({
-                    label: `Position ${overallPos}`,
-                    targetIndex
-                });
-            }
-            return options;
-        }
-
-        function attachQueueCardEvents() {
-            const cards = document.querySelectorAll("#queueBox .queue-item-draggable");
-
-            cards.forEach(card => {
-                const itemId = Number(card.dataset.itemId);
-
-                card.addEventListener("click", (event) => {
-                    if (event.target.closest(".quick-actions-row")) return;
-                    selectedQueueItemId = (selectedQueueItemId === itemId) ? null : itemId;
-                    renderQueueFromDomState();
-                });
-            });
-        }
-
-        function attachQuickActionEvents() {
-            const actionContainers = document.querySelectorAll("#queueBox .quick-actions-row");
-            const selects = document.querySelectorAll("#queueBox .quick-action-select");
-
-            actionContainers.forEach(el => {
-                ["pointerdown", "mousedown", "touchstart", "click"].forEach(evt => {
-                    el.addEventListener(evt, () => lockQuickActions(5000));
-                });
-            });
-
-            selects.forEach(el => {
-                el.addEventListener("focus", () => lockQuickActions(10000));
-                el.addEventListener("pointerdown", () => lockQuickActions(10000));
-                el.addEventListener("mousedown", () => lockQuickActions(10000));
-                el.addEventListener("touchstart", () => lockQuickActions(10000));
-                el.addEventListener("click", () => lockQuickActions(10000));
-                el.addEventListener("blur", () => {
-                    setTimeout(() => {
-                        quickActionLockUntil = 0;
-                        refreshState();
-                    }, 150);
-                });
-            });
-        }
-
-        async function renderQueueFromDomState() {
-            const res = await fetch(`/api/rooms/${ROOM_CODE}/state`);
-            const data = await res.json();
-            renderQueue(data.queue || []);
-        }
-
-        async function sendReorder(orderedIds) {
-            await fetch(`/api/rooms/${ROOM_CODE}/reorder_queue`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ordered_ids: orderedIds })
-            });
-        }
-
-        async function moveQueueItem(itemId, mode) {
-            lockQuickActions(3000);
-
-            const queueBox = document.getElementById("queueBox");
-            const orderedIds = Array.from(queueBox.querySelectorAll("[data-item-id]"))
-                .map(el => Number(el.dataset.itemId));
-
-            const fromIndex = orderedIds.indexOf(itemId);
-            if (fromIndex < 0) return;
-
-            const [moved] = orderedIds.splice(fromIndex, 1);
-
-            if (mode === "next") {
-                orderedIds.splice(0, 0, moved);
-            } else if (mode === "last") {
-                orderedIds.push(moved);
-            }
-
-            await sendReorder(orderedIds);
-            quickActionLockUntil = 0;
-            refreshState();
-        }
-
-        async function handlePositionChange(itemId, targetIndexValue) {
-            lockQuickActions(3000);
-
-            if (!targetIndexValue) return;
-
-            const targetIndex = Number(targetIndexValue);
-            if (Number.isNaN(targetIndex)) return;
-
-            const queueBox = document.getElementById("queueBox");
-            const orderedIds = Array.from(queueBox.querySelectorAll("[data-item-id]"))
-                .map(el => Number(el.dataset.itemId));
-
-            const fromIndex = orderedIds.indexOf(itemId);
-            if (fromIndex < 0 || fromIndex === targetIndex) return;
-
-            const [moved] = orderedIds.splice(fromIndex, 1);
-            orderedIds.splice(targetIndex, 0, moved);
-
-            await sendReorder(orderedIds);
-            quickActionLockUntil = 0;
-            refreshState();
-        }
-
-        async function manualPlay() {
-            await fetch(`/api/rooms/${ROOM_CODE}/play`, { method: "POST" });
-            refreshState();
-
-            setTimeout(() => {
-                try {
-                    player.playVideo();
-                    setOverlay("", false);
-                } catch (err) {
-                    console.error(err);
-                }
-            }, 300);
-        }
-
-        async function manualSkip() {
-            await fetch(`/api/rooms/${ROOM_CODE}/skip`, { method: "POST" });
-            refreshState();
-        }
-
-        function escapeHtml(str) {
-            return String(str)
-                .replaceAll("&", "&amp;")
-                .replaceAll("<", "&lt;")
-                .replaceAll(">", "&gt;")
-                .replaceAll('"', "&quot;")
-                .replaceAll("'", "&#039;");
-        }
-
-        setInterval(refreshState, 1500);
-    </script>
+
+<div class="stars"></div>
+
+<div class="computer-page">
+
+<div class="page-topbar">
+<div class="topbar-title">🎤 YouKe</div>
+<div class="room-badge">Room {{ code }}</div>
+</div>
+
+<div class="computer-layout">
+
+<div class="main-area glass-panel sticky-panel">
+
+<div id="playerPanel" class="player-panel">
+
+<div id="player"></div>
+
+<div id="playerOverlay" class="overlay-message hidden"></div>
+
+<div class="video-qr-overlay">
+<div class="video-qr-title">Scan to Search Song</div>
+<div id="qrcode" class="video-qr-box"></div>
+</div>
+
+<button id="fullscreenBtn"
+class="fullscreen-fab"
+onclick="toggleFullscreen()"
+title="Fullscreen">⛶</button>
+
+</div>
+
+<div class="button-row left-buttons">
+
+<button class="magic-btn green"
+onclick="manualPlay()">▶ Play</button>
+
+<button class="magic-btn orange"
+onclick="manualSkip()">⏭ Skip</button>
+
+<button class="magic-btn blue"
+onclick="toggleFullscreen()">⛶ Fullscreen</button>
+
+</div>
+
+</div>
+
+<div class="sidebar">
+
+<div class="glass-panel mobile-link-panel">
+
+<div class="section-title small-panel-title">
+Mobile Link
+</div>
+
+<div class="small muted" id="mobileUrlText"></div>
+
+</div>
+
+
+<div id="currentBox" class="queue-stack now-playing-box"></div>
+
+
+<div class="glass-panel queue-panel queue-scroll">
+
+<div class="section-title small-panel-title">
+Up Next
+</div>
+
+<div class="small muted drag-hint">
+Tap a song card for quick actions.
+</div>
+
+<div id="queueBox" class="queue-stack"></div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+const ROOM_CODE="{{ code }}";
+const BASE_URL="{{ base_url }}";
+const MOBILE_URL=`${BASE_URL}/mobile/${ROOM_CODE}`;
+
+let player=null;
+let ytReady=false;
+let lastNonce=-1;
+let currentVideoId=null;
+let currentIsPlaying=null;
+
+document.getElementById("mobileUrlText").textContent=MOBILE_URL;
+
+const qrCanvas=document.createElement("canvas");
+document.getElementById("qrcode").appendChild(qrCanvas);
+
+QRCode.toCanvas(qrCanvas,MOBILE_URL,{width:120});
+
+function setOverlay(text,show=true){
+
+const overlay=document.getElementById("playerOverlay");
+
+overlay.textContent=text||"";
+
+overlay.classList.toggle("hidden",!show);
+
+}
+
+function toggleFullscreen(){
+
+const panel=document.getElementById("playerPanel");
+
+if(!document.fullscreenElement){
+
+panel.requestFullscreen();
+
+}else{
+
+document.exitFullscreen();
+
+}
+
+}
+
+document.addEventListener("fullscreenchange",()=>{
+
+const btn=document.getElementById("fullscreenBtn");
+
+if(document.fullscreenElement){
+
+btn.textContent="⤫";
+
+}else{
+
+btn.textContent="⛶";
+
+}
+
+});
+
+function onYouTubeIframeAPIReady(){
+
+player=new YT.Player("player",{
+
+width:"100%",
+height:"100%",
+
+playerVars:{
+autoplay:1,
+rel:0,
+modestbranding:1,
+fs:0
+},
+
+events:{
+
+onReady:()=>{
+
+ytReady=true;
+
+refreshState();
+
+},
+
+onStateChange:onPlayerStateChange,
+onError:onPlayerError
+
+}
+
+});
+
+}
+
+function onPlayerStateChange(event){
+
+if(event.data===YT.PlayerState.PLAYING){
+
+setOverlay("",false);
+
+}
+
+if(event.data===YT.PlayerState.ENDED){
+
+fetch(`/api/rooms/${ROOM_CODE}/skip`,{method:"POST"})
+.then(()=>refreshState());
+
+}
+
+}
+
+function onPlayerError(){
+
+setOverlay("Video cannot be played. Skipping...",true);
+
+fetch(`/api/rooms/${ROOM_CODE}/skip`,{method:"POST"})
+.then(()=>refreshState());
+
+}
+
+async function refreshState(){
+
+const res=await fetch(`/api/rooms/${ROOM_CODE}/state`);
+const data=await res.json();
+
+renderCurrent(data.current);
+renderQueue(data.queue||[]);
+
+if(!ytReady||!player)return;
+
+const current=data.current;
+const nonce=data.player_nonce;
+const shouldPlay=data.is_playing;
+
+if(!current){
+
+currentVideoId=null;
+setOverlay("No song playing",true);
+return;
+
+}
+
+if(nonce!==lastNonce||current.videoId!==currentVideoId){
+
+lastNonce=nonce;
+currentVideoId=current.videoId;
+
+setOverlay("Loading song...",true);
+
+player.loadVideoById(current.videoId);
+
+setTimeout(()=>{
+
+if(shouldPlay)player.playVideo();
+
+},700);
+
+return;
+
+}
+
+}
+
+function renderCurrent(current){
+
+const box=document.getElementById("currentBox");
+
+if(current){
+
+box.innerHTML=`
+
+<div class="song-card current-song sparkle-card">
+
+<img src="${current.thumbnail}">
+
+<div class="song-text">
+
+<div class="song-pill now-pill">NOW PLAYING</div>
+
+<div class="song-title">${current.title}</div>
+
+<div class="song-sub">Singer : ${current.requestedBy}</div>
+
+</div>
+
+</div>
+
+`;
+
+}else{
+
+box.innerHTML=`<div class="empty-box glass-panel">No song playing</div>`;
+
+}
+
+}
+
+function renderQueue(queue){
+
+const box=document.getElementById("queueBox");
+
+if(!queue.length){
+
+box.innerHTML=`<div class="empty-box">Queue empty</div>`;
+return;
+
+}
+
+box.innerHTML=queue.map((item,idx)=>`
+
+<div class="song-card sparkle-card">
+
+<img src="${item.thumbnail}">
+
+<div class="song-text">
+
+<div class="song-pill result-pill">NEXT ${idx+1}</div>
+
+<div class="song-title">${item.title}</div>
+
+<div class="song-sub">Singer : ${item.requestedBy}</div>
+
+</div>
+
+</div>
+
+`).join("");
+
+}
+
+async function manualPlay(){
+
+await fetch(`/api/rooms/${ROOM_CODE}/play`,{method:"POST"});
+refreshState();
+
+}
+
+async function manualSkip(){
+
+await fetch(`/api/rooms/${ROOM_CODE}/skip`,{method:"POST"});
+refreshState();
+
+}
+
+setInterval(refreshState,1500);
+
+</script>
+
 </body>
 </html>
