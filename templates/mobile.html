@@ -5,6 +5,7 @@
     <title>YouKe Karaoke Mobile {{ code }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 </head>
 <body class="fantasy-bg">
     <div class="stars"></div>
@@ -32,13 +33,12 @@
             </div>
 
             <div id="searchResults" class="mobile-queue"></div>
+            <div id="currentBox" class="mobile-queue"></div>
 
-            <div id="currentBox" class="mobile-queue mobile-current-box"></div>
-
-            <div class="glass-panel mobile-controls queue-scroll-panel">
+            <div class="glass-panel mobile-controls">
                 <div class="section-title">Up Next</div>
-                <div class="small muted drag-hint">Tap a song card for quick actions.</div>
-                <div id="queueBox" class="mobile-queue mobile-queue-scroll-box"></div>
+                <div class="small muted drag-hint">Press and hold on a song card to reorder queue.</div>
+                <div id="queueBox" class="mobile-queue"></div>
             </div>
         </div>
     </div>
@@ -46,10 +46,8 @@
     <script>
         const ROOM_CODE = "{{ code }}";
         const SINGER_KEY = `youke_karaoke_singer_${ROOM_CODE}`;
-
         let searchTimer = null;
-        let selectedQueueItemId = null;
-        let suppressNextCardClickUntil = 0;
+        let queueSortable = null;
 
         function loadSingerName() {
             const saved = localStorage.getItem(SINGER_KEY) || "";
@@ -153,163 +151,86 @@
         async function refreshState() {
             const res = await fetch(`/api/rooms/${ROOM_CODE}/state`);
             const data = await res.json();
-
-            renderCurrent(data.current);
-            renderQueue(data.queue || []);
+            renderQueue(data);
         }
 
-        function renderCurrent(current) {
+        function renderQueue(data) {
             const currentBox = document.getElementById("currentBox");
+            const queueBox = document.getElementById("queueBox");
 
-            if (current) {
-                currentBox.innerHTML = `
+            let currentHtml = "";
+            let queueHtml = "";
+
+            if (data.current) {
+                currentHtml = `
                     <div class="song-card current-song sparkle-card">
-                        <img src="${escapeHtml(current.thumbnail)}" alt="thumbnail">
+                        <img src="${escapeHtml(data.current.thumbnail)}" alt="thumbnail">
                         <div class="song-text">
                             <div class="song-pill now-pill">NOW PLAYING</div>
-                            <div class="song-title">${escapeHtml(current.title || current.videoId)}</div>
-                            <div class="song-sub">Singer : ${escapeHtml(current.requestedBy || "Guest")}</div>
+                            <div class="song-title">${escapeHtml(data.current.title || data.current.videoId)}</div>
+                            <div class="song-sub">Singer : ${escapeHtml(data.current.requestedBy || "Guest")}</div>
                         </div>
                     </div>
                 `;
             } else {
-                currentBox.innerHTML = `<div class="empty-box glass-panel">No song playing</div>`;
-            }
-        }
-
-        function renderQueue(queue) {
-            const queueBox = document.getElementById("queueBox");
-
-            if (!queue.length) {
-                selectedQueueItemId = null;
-                queueBox.innerHTML = `<div class="empty-box glass-panel">Queue empty</div>`;
-                return;
+                currentHtml = `<div class="empty-box glass-panel">No song playing</div>`;
             }
 
-            const exists = queue.some(item => item.itemId === selectedQueueItemId);
-            if (!exists) {
-                selectedQueueItemId = null;
-            }
-
-            queueBox.innerHTML = queue.map((item, idx) => {
-                const isSelected = item.itemId === selectedQueueItemId;
-                const cardClasses = `song-card sparkle-card queue-item-card${isSelected ? " queue-item-selected" : ""}`;
-                return `
-                    <div class="${cardClasses}" data-item-id="${item.itemId}">
+            if (data.queue && data.queue.length > 0) {
+                queueHtml = data.queue.map((item, idx) => `
+                    <div class="song-card sparkle-card queue-item-draggable draggable-song" data-item-id="${item.itemId}">
                         <img src="${escapeHtml(item.thumbnail)}" alt="thumbnail">
                         <div class="song-text">
                             <div class="song-pill result-pill">NEXT ${idx + 1}</div>
                             <div class="song-title">${escapeHtml(item.title || item.videoId)}</div>
                             <div class="song-sub">Singer : ${escapeHtml(item.requestedBy || "Guest")}</div>
-                            ${isSelected ? renderQuickActions(item.itemId, idx, queue.length) : ""}
                         </div>
                     </div>
-                `;
-            }).join("");
-
-            attachQueueCardEvents();
-        }
-
-        function renderQuickActions(itemId, queueIndex, queueLength) {
-            const options = buildPositionOptions(queueIndex, queueLength);
-
-            return `
-                <div class="quick-actions-row" onclick="event.stopPropagation()">
-                    <button class="quick-action-btn" onclick="moveQueueItem(${itemId}, 'next'); event.stopPropagation();">Next song</button>
-                    <button class="quick-action-btn secondary" onclick="moveQueueItem(${itemId}, 'last'); event.stopPropagation();">Last song</button>
-                    ${
-                        options.length
-                            ? `<div class="quick-action-select-wrap">
-                                    <select class="quick-action-select" onclick="event.stopPropagation()" onchange="handlePositionChange(${itemId}, this.value); event.stopPropagation();">
-                                        <option value="">Move to...</option>
-                                        ${options.map(opt => `<option value="${opt.targetIndex}">${opt.label}</option>`).join("")}
-                                    </select>
-                               </div>`
-                            : ``
-                    }
-                </div>
-            `;
-        }
-
-        function buildPositionOptions(queueIndex, queueLength) {
-            const options = [];
-            for (let overallPos = 3; overallPos <= queueLength; overallPos++) {
-                const targetIndex = overallPos - 2;
-                if (targetIndex === queueIndex) continue;
-                options.push({
-                    label: `Position ${overallPos}`,
-                    targetIndex
-                });
+                `).join("");
+            } else {
+                queueHtml = `<div class="empty-box glass-panel">Queue empty</div>`;
             }
-            return options;
+
+            currentBox.innerHTML = currentHtml;
+            queueBox.innerHTML = queueHtml;
+
+            enableSortable();
         }
 
-        function attachQueueCardEvents() {
-            const cards = document.querySelectorAll("#queueBox .queue-item-card");
+        function enableSortable() {
+            const queueBox = document.getElementById("queueBox");
 
-            cards.forEach(card => {
-                const itemId = Number(card.dataset.itemId);
+            if (queueSortable) {
+                queueSortable.destroy();
+                queueSortable = null;
+            }
 
-                card.addEventListener("click", (event) => {
-                    if (Date.now() < suppressNextCardClickUntil) return;
-                    if (event.target.closest(".quick-actions-row")) return;
+            const items = queueBox.querySelectorAll("[data-item-id]");
+            if (!items.length) return;
 
-                    selectedQueueItemId = (selectedQueueItemId === itemId) ? null : itemId;
+            queueSortable = Sortable.create(queueBox, {
+                animation: 180,
+                draggable: ".queue-item-draggable",
+                ghostClass: "drag-ghost",
+                chosenClass: "drag-chosen",
+                dragClass: "drag-dragging",
+                delay: 180,
+                delayOnTouchOnly: true,
+                touchStartThreshold: 6,
+                fallbackTolerance: 6,
+                onEnd: async () => {
+                    const orderedIds = Array.from(queueBox.querySelectorAll("[data-item-id]"))
+                        .map(el => Number(el.dataset.itemId));
+
+                    await fetch(`/api/rooms/${ROOM_CODE}/reorder_queue`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ ordered_ids: orderedIds })
+                    });
+
                     refreshState();
-                });
+                }
             });
-        }
-
-        async function sendReorder(orderedIds) {
-            await fetch(`/api/rooms/${ROOM_CODE}/reorder_queue`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ordered_ids: orderedIds })
-            });
-        }
-
-        async function moveQueueItem(itemId, mode) {
-            suppressNextCardClickUntil = Date.now() + 800;
-
-            const queueBox = document.getElementById("queueBox");
-            const orderedIds = Array.from(queueBox.querySelectorAll("[data-item-id]"))
-                .map(el => Number(el.dataset.itemId));
-
-            const fromIndex = orderedIds.indexOf(itemId);
-            if (fromIndex < 0) return;
-
-            const [moved] = orderedIds.splice(fromIndex, 1);
-
-            if (mode === "next") {
-                orderedIds.splice(0, 0, moved);
-            } else if (mode === "last") {
-                orderedIds.push(moved);
-            }
-
-            await sendReorder(orderedIds);
-            refreshState();
-        }
-
-        async function handlePositionChange(itemId, targetIndexValue) {
-            if (!targetIndexValue) return;
-
-            suppressNextCardClickUntil = Date.now() + 800;
-
-            const targetIndex = Number(targetIndexValue);
-            if (Number.isNaN(targetIndex)) return;
-
-            const queueBox = document.getElementById("queueBox");
-            const orderedIds = Array.from(queueBox.querySelectorAll("[data-item-id]"))
-                .map(el => Number(el.dataset.itemId));
-
-            const fromIndex = orderedIds.indexOf(itemId);
-            if (fromIndex < 0 || fromIndex === targetIndex) return;
-
-            const [moved] = orderedIds.splice(fromIndex, 1);
-            orderedIds.splice(targetIndex, 0, moved);
-
-            await sendReorder(orderedIds);
-            refreshState();
         }
 
         async function playSong() {
