@@ -707,4 +707,28 @@ hr {
     .terms-content p {
         font-size: 14px;
     }
+    
+    .compliance-footer {
+        margin-top: 18px;
+        padding: 14px 16px;
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,0.08);
+        background: linear-gradient(
+            180deg,
+            rgba(255,255,255,0.03),
+            rgba(255,255,255,0.015)
+        );
+    }
+    .compliance-title {
+        font-size: 14px;
+        font-weight: bold;
+        color: var(--gold);
+        margin-bottom: 8px;
+    }
+    
+    .compliance-text {
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--text-soft);
+    }
 }
