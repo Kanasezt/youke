@@ -1,112 +1,120 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>YouKe Karaoke</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/static/style.css">
+<meta charset="utf-8">
+<title>YouKe Karaoke</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body class="fantasy-bg">
-    <div class="stars"></div>
+<div class="stars"></div>
 
-    <div class="page-center">
-        <div class="glass-card narrow">
-            <h1 class="glow-title">✨ YouKe Karaoke ✨</h1>
-            <p class="muted intro-text">
-                Create a YouKe room on computer, then scan QR with mobile to search songs and control play or skip.
-            </p>
+<div class="page-center">
+<div class="glass-card narrow">
 
-            <div class="info-box">
-                <strong>Song database:</strong>
-                {% if db_exists %}
-                    Ready
-                {% else %}
-                    Not configured
-                {% endif %}
-            </div>
+<h1 class="glow-title">✨ YouKe Karaoke ✨</h1>
 
-            <div class="terms-box">
-                <div class="terms-title">Terms & Conditions</div>
-                <div class="terms-content">
-                    <p>
-                        YouKe Karaoke is a queue management and playback control interface that allows users to organize and control karaoke sessions using videos made available through the official YouTube embedded player.
-                    </p>
+<p class="intro-text">
+Create a YouKe room on computer, then scan QR with mobile to search songs and control play or skip.
+</p>
 
-                    <p>
-                        YouKe Karaoke does not upload, host, store, copy, reproduce, convert, download, redistribute, or claim ownership of any YouTube video, audio, artwork, lyrics, metadata, or other third-party content. All such content remains the property of its respective owners, licensors, publishers, creators, and platform providers.
-                    </p>
+<div class="info-box">
+<strong>Song database:</strong>
+Ready
+</div>
 
-                    <p>
-                        Playback within YouKe Karaoke is intended to occur only through YouTube’s official player and related permitted embedding technologies. YouKe Karaoke is not intended to bypass, disable, interfere with, modify, obscure, block, or remove any YouTube feature, advertising, branding, links, playback restrictions, or platform controls.
-                    </p>
+<div class="terms-box">
 
-                    <p>
-                        By using this service, you acknowledge that YouKe Karaoke is provided as a software interface for queueing, organizing, and controlling playback, and not as a content distribution, streaming, download, retransmission, or content-replacement service.
-                    </p>
+<div class="terms-title">
+Terms & Conditions
+</div>
 
-                    <p>
-                        You are solely responsible for ensuring that your use of YouKe Karaoke complies with all applicable laws, regulations, platform terms, copyright rules, licensing requirements, venue rules, and public performance obligations in your country or territory.
-                    </p>
+<div class="terms-content">
 
-                    <p>
-                        Private, personal, and non-commercial use is generally the intended use case of this service unless the user has independently obtained all necessary rights, permissions, and licenses required for any commercial, public, venue-based, event-based, monetized, or business-related use.
-                    </p>
+<p>
+YouKe Karaoke is a queue management and playback control interface that allows users to organize and control karaoke sessions using videos made available through the official YouTube embedded player.
+</p>
 
-                    <p>
-                        If you use YouKe Karaoke in any business, venue, hospitality, entertainment, rental, or public setting, you are solely responsible for obtaining all necessary permissions from YouTube where applicable, and from all relevant copyright owners, collection societies, music publishers, sound recording owners, performance rights organizations, or other rightsholders.
-                    </p>
+<p>
+YouKe Karaoke does not upload, host, store, copy, reproduce, convert, download, redistribute, or claim ownership of any YouTube video, audio, artwork, lyrics, metadata, or other third-party content.
+</p>
 
-                    <p>
-                        The creator, developer, operator, and distributor of YouKe Karaoke do not represent that any particular use of YouKe Karaoke is approved by YouTube, Google, or any copyright owner unless explicitly stated in writing. No part of this service should be interpreted as legal advice, licensing advice, or a grant of intellectual property rights.
-                    </p>
+<p>
+Playback within YouKe Karaoke occurs only through YouTube’s official player and permitted embedding technologies.
+</p>
 
-                    <p>
-                        YouKe Karaoke may suspend, restrict, modify, or discontinue features, embedding behavior, room functionality, playback options, or service access at any time in order to comply with law, platform requirements, technical limitations, rightsholder requests, safety concerns, or policy changes.
-                    </p>
+<p>
+Users are responsible for ensuring their usage complies with applicable laws, platform terms, and copyright requirements.
+</p>
 
-                    <p>
-                        By creating a room or using this service, you confirm that you understand and accept that you are responsible for the way you use the service, the content you choose to queue, and the legal or commercial consequences of that use.
-                    </p>
-                </div>
+</div>
 
-                <label class="terms-check">
-                    <input type="checkbox" id="acceptTerms">
-                    <span>I have read and agree to the Terms & Conditions above.</span>
-                </label>
-            </div>
+<label class="terms-check">
+<input type="checkbox" id="acceptTerms">
+<span>I have read and agree to the Terms & Conditions above.</span>
+</label>
 
-            <form action="/create" method="post" onsubmit="return validateTerms();">
-                <button type="submit" class="magic-btn pink">Create Room</button>
-            </form>
+</div>
 
-            <hr>
+<form action="/create" method="post" onsubmit="return validateTerms();">
 
-            <form action="/join" method="post">
-                <input type="text" name="room_code" placeholder="Enter Room Code" required>
-                <button type="submit" class="magic-btn blue">Join by Room Code</button>
-            </form>
+<button type="submit" class="magic-btn pink">
+Create Room
+</button>
 
-            <div class="compliance-footer">
-                <div class="compliance-title">Compliance Notice</div>
-                <div class="compliance-text">
-                    YouKe uses the official YouTube embedded player for playback and does not host, upload, or distribute third-party video content.
-                </div>
-                <div class="compliance-text">
-                    YouTube content, trademarks, branding, and media remain the property of their respective owners and platform providers.
-                </div>
-            </div>
-        </div>
-    </div>
+</form>
 
-    <script>
-        function validateTerms() {
-            const accepted = document.getElementById("acceptTerms").checked;
-            if (!accepted) {
-                alert("Please accept the Terms & Conditions before creating a room.");
-                return false;
-            }
-            return true;
-        }
-    </script>
+<hr>
+
+<form action="/join" method="post">
+
+<input type="text" name="room_code" placeholder="Enter Room Code" required>
+
+<br><br>
+
+<button type="submit" class="magic-btn blue">
+Join by Room Code
+</button>
+
+</form>
+
+<div class="compliance-footer">
+
+<div class="compliance-title">
+Compliance Notice
+</div>
+
+<div class="compliance-text">
+YouKe uses the official YouTube embedded player and does not host, upload, or distribute video content.
+</div>
+
+<div class="compliance-text">
+YouTube content, trademarks, branding, and media remain the property of their respective owners.
+</div>
+
+</div>
+
+</div>
+</div>
+
+<script>
+
+function validateTerms(){
+
+if(!document.getElementById("acceptTerms").checked){
+
+alert("Please accept the Terms & Conditions");
+
+return false;
+
+}
+
+return true;
+
+}
+
+</script>
+
 </body>
 </html>
