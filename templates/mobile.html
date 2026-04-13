@@ -5,7 +5,6 @@
     <title>YouKe Karaoke Mobile {{ code }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/static/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 </head>
 <body class="fantasy-bg">
     <div class="stars"></div>
@@ -37,7 +36,7 @@
 
             <div class="glass-panel mobile-controls">
                 <div class="section-title">Up Next</div>
-                <div class="small muted drag-hint">Press and hold on a song card to reorder queue.</div>
+                <div class="small muted drag-hint">Tap a song card for quick actions.</div>
                 <div id="queueBox" class="mobile-queue"></div>
             </div>
         </div>
@@ -46,8 +45,10 @@
     <script>
         const ROOM_CODE = "{{ code }}";
         const SINGER_KEY = `youke_karaoke_singer_${ROOM_CODE}`;
+
         let searchTimer = null;
-        let queueSortable = null;
+        let selectedQueueItemId = null;
+        let quickActionLockUntil = 0;
 
         function loadSingerName() {
             const saved = localStorage.getItem(SINGER_KEY) || "";
@@ -148,89 +149,211 @@
             refreshState();
         }
 
+        function lockQuickActions(ms = 5000) {
+            quickActionLockUntil = Date.now() + ms;
+        }
+
+        function isQuickActionsLocked() {
+            return Date.now() < quickActionLockUntil;
+        }
+
         async function refreshState() {
             const res = await fetch(`/api/rooms/${ROOM_CODE}/state`);
             const data = await res.json();
-            renderQueue(data);
+
+            renderCurrent(data.current);
+
+            if (isQuickActionsLocked()) {
+                return;
+            }
+
+            renderQueue(data.queue || []);
         }
 
-        function renderQueue(data) {
+        function renderCurrent(current) {
             const currentBox = document.getElementById("currentBox");
-            const queueBox = document.getElementById("queueBox");
 
-            let currentHtml = "";
-            let queueHtml = "";
-
-            if (data.current) {
-                currentHtml = `
+            if (current) {
+                currentBox.innerHTML = `
                     <div class="song-card current-song sparkle-card">
-                        <img src="${escapeHtml(data.current.thumbnail)}" alt="thumbnail">
+                        <img src="${escapeHtml(current.thumbnail)}" alt="thumbnail">
                         <div class="song-text">
                             <div class="song-pill now-pill">NOW PLAYING</div>
-                            <div class="song-title">${escapeHtml(data.current.title || data.current.videoId)}</div>
-                            <div class="song-sub">Singer : ${escapeHtml(data.current.requestedBy || "Guest")}</div>
+                            <div class="song-title">${escapeHtml(current.title || current.videoId)}</div>
+                            <div class="song-sub">Singer : ${escapeHtml(current.requestedBy || "Guest")}</div>
                         </div>
                     </div>
                 `;
             } else {
-                currentHtml = `<div class="empty-box glass-panel">No song playing</div>`;
+                currentBox.innerHTML = `<div class="empty-box glass-panel">No song playing</div>`;
+            }
+        }
+
+        function renderQueue(queue) {
+            const queueBox = document.getElementById("queueBox");
+
+            if (!queue.length) {
+                selectedQueueItemId = null;
+                queueBox.innerHTML = `<div class="empty-box glass-panel">Queue empty</div>`;
+                return;
             }
 
-            if (data.queue && data.queue.length > 0) {
-                queueHtml = data.queue.map((item, idx) => `
-                    <div class="song-card sparkle-card queue-item-draggable draggable-song" data-item-id="${item.itemId}">
+            const exists = queue.some(item => item.itemId === selectedQueueItemId);
+            if (!exists) {
+                selectedQueueItemId = null;
+            }
+
+            queueBox.innerHTML = queue.map((item, idx) => {
+                const isSelected = item.itemId === selectedQueueItemId;
+                const cardClasses = `song-card sparkle-card queue-item-draggable draggable-song${isSelected ? " queue-item-selected" : ""}`;
+                return `
+                    <div class="${cardClasses}" data-item-id="${item.itemId}">
                         <img src="${escapeHtml(item.thumbnail)}" alt="thumbnail">
                         <div class="song-text">
                             <div class="song-pill result-pill">NEXT ${idx + 1}</div>
                             <div class="song-title">${escapeHtml(item.title || item.videoId)}</div>
                             <div class="song-sub">Singer : ${escapeHtml(item.requestedBy || "Guest")}</div>
+                            ${isSelected ? renderQuickActions(item.itemId, idx, queue.length) : ""}
                         </div>
                     </div>
-                `).join("");
-            } else {
-                queueHtml = `<div class="empty-box glass-panel">Queue empty</div>`;
-            }
+                `;
+            }).join("");
 
-            currentBox.innerHTML = currentHtml;
-            queueBox.innerHTML = queueHtml;
-
-            enableSortable();
+            attachQueueCardEvents();
+            attachQuickActionEvents();
         }
 
-        function enableSortable() {
-            const queueBox = document.getElementById("queueBox");
+        function renderQuickActions(itemId, queueIndex, queueLength) {
+            const options = buildPositionOptions(queueIndex, queueLength);
 
-            if (queueSortable) {
-                queueSortable.destroy();
-                queueSortable = null;
+            return `
+                <div class="quick-actions-row" onclick="event.stopPropagation()">
+                    <button class="quick-action-btn" onclick="moveQueueItem(${itemId}, 'next')">Next song</button>
+                    <button class="quick-action-btn secondary" onclick="moveQueueItem(${itemId}, 'last')">Last song</button>
+                    ${
+                        options.length
+                            ? `<div class="quick-action-select-wrap">
+                                    <select class="quick-action-select" onchange="handlePositionChange(${itemId}, this.value)">
+                                        <option value="">Move to...</option>
+                                        ${options.map(opt => `<option value="${opt.targetIndex}">${opt.label}</option>`).join("")}
+                                    </select>
+                               </div>`
+                            : ``
+                    }
+                </div>
+            `;
+        }
+
+        function buildPositionOptions(queueIndex, queueLength) {
+            const options = [];
+            for (let overallPos = 3; overallPos <= queueLength; overallPos++) {
+                const targetIndex = overallPos - 2;
+                if (targetIndex === queueIndex) continue;
+                options.push({
+                    label: `Position ${overallPos}`,
+                    targetIndex
+                });
+            }
+            return options;
+        }
+
+        function attachQueueCardEvents() {
+            const cards = document.querySelectorAll("#queueBox .queue-item-draggable");
+
+            cards.forEach(card => {
+                const itemId = Number(card.dataset.itemId);
+
+                card.addEventListener("click", (event) => {
+                    if (event.target.closest(".quick-actions-row")) return;
+                    selectedQueueItemId = (selectedQueueItemId === itemId) ? null : itemId;
+                    renderQueueFromDomState();
+                });
+            });
+        }
+
+        function attachQuickActionEvents() {
+            const actionContainers = document.querySelectorAll("#queueBox .quick-actions-row");
+            const selects = document.querySelectorAll("#queueBox .quick-action-select");
+
+            actionContainers.forEach(el => {
+                ["pointerdown", "mousedown", "touchstart", "click"].forEach(evt => {
+                    el.addEventListener(evt, () => lockQuickActions(5000));
+                });
+            });
+
+            selects.forEach(el => {
+                el.addEventListener("focus", () => lockQuickActions(10000));
+                el.addEventListener("pointerdown", () => lockQuickActions(10000));
+                el.addEventListener("mousedown", () => lockQuickActions(10000));
+                el.addEventListener("touchstart", () => lockQuickActions(10000));
+                el.addEventListener("click", () => lockQuickActions(10000));
+                el.addEventListener("blur", () => {
+                    setTimeout(() => {
+                        quickActionLockUntil = 0;
+                        refreshState();
+                    }, 150);
+                });
+            });
+        }
+
+        async function renderQueueFromDomState() {
+            const res = await fetch(`/api/rooms/${ROOM_CODE}/state`);
+            const data = await res.json();
+            renderQueue(data.queue || []);
+        }
+
+        async function sendReorder(orderedIds) {
+            await fetch(`/api/rooms/${ROOM_CODE}/reorder_queue`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ordered_ids: orderedIds })
+            });
+        }
+
+        async function moveQueueItem(itemId, mode) {
+            lockQuickActions(3000);
+
+            const queueBox = document.getElementById("queueBox");
+            const orderedIds = Array.from(queueBox.querySelectorAll("[data-item-id]"))
+                .map(el => Number(el.dataset.itemId));
+
+            const fromIndex = orderedIds.indexOf(itemId);
+            if (fromIndex < 0) return;
+
+            const [moved] = orderedIds.splice(fromIndex, 1);
+
+            if (mode === "next") {
+                orderedIds.splice(0, 0, moved);
+            } else if (mode === "last") {
+                orderedIds.push(moved);
             }
 
-            const items = queueBox.querySelectorAll("[data-item-id]");
-            if (!items.length) return;
+            await sendReorder(orderedIds);
+            quickActionLockUntil = 0;
+            refreshState();
+        }
 
-            queueSortable = Sortable.create(queueBox, {
-                animation: 180,
-                draggable: ".queue-item-draggable",
-                ghostClass: "drag-ghost",
-                chosenClass: "drag-chosen",
-                dragClass: "drag-dragging",
-                delay: 180,
-                delayOnTouchOnly: true,
-                touchStartThreshold: 6,
-                fallbackTolerance: 6,
-                onEnd: async () => {
-                    const orderedIds = Array.from(queueBox.querySelectorAll("[data-item-id]"))
-                        .map(el => Number(el.dataset.itemId));
+        async function handlePositionChange(itemId, targetIndexValue) {
+            lockQuickActions(3000);
 
-                    await fetch(`/api/rooms/${ROOM_CODE}/reorder_queue`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ ordered_ids: orderedIds })
-                    });
+            if (!targetIndexValue) return;
 
-                    refreshState();
-                }
-            });
+            const targetIndex = Number(targetIndexValue);
+            if (Number.isNaN(targetIndex)) return;
+
+            const queueBox = document.getElementById("queueBox");
+            const orderedIds = Array.from(queueBox.querySelectorAll("[data-item-id]"))
+                .map(el => Number(el.dataset.itemId));
+
+            const fromIndex = orderedIds.indexOf(itemId);
+            if (fromIndex < 0 || fromIndex === targetIndex) return;
+
+            const [moved] = orderedIds.splice(fromIndex, 1);
+            orderedIds.splice(targetIndex, 0, moved);
+
+            await sendReorder(orderedIds);
+            quickActionLockUntil = 0;
+            refreshState();
         }
 
         async function playSong() {
