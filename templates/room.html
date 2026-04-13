@@ -46,12 +46,12 @@
                     <div class="small muted" id="mobileUrlText"></div>
                 </div>
 
-                <div id="currentBox" class="queue-stack current-sticky-box"></div>
+                <div id="currentBox" class="queue-stack"></div>
 
-                <div class="glass-panel queue-panel queue-scroll-panel">
+                <div class="glass-panel queue-panel">
                     <div class="section-title small-panel-title">Up Next</div>
                     <div class="small muted drag-hint">Tap a song card for quick actions.</div>
-                    <div id="queueBox" class="queue-stack queue-scroll-box"></div>
+                    <div id="queueBox" class="queue-stack"></div>
                 </div>
             </div>
         </div>
@@ -259,4 +259,188 @@
                 const isSelected = item.itemId === selectedQueueItemId;
                 const cardClasses = `song-card sparkle-card queue-item-card${isSelected ? " queue-item-selected" : ""}`;
                 return `
-                    <div class="${cardClasses}" data
+                    <div class="${cardClasses}" data-item-id="${item.itemId}">
+                        <img src="${escapeHtml(item.thumbnail)}" alt="thumbnail">
+                        <div class="song-text">
+                            <div class="song-pill result-pill">NEXT ${idx + 1}</div>
+                            <div class="song-title">${escapeHtml(item.title || item.videoId)}</div>
+                            <div class="song-sub">Singer : ${escapeHtml(item.requestedBy || "Guest")}</div>
+                            ${isSelected ? renderQuickActions(item.itemId, idx, queue.length) : ""}
+                        </div>
+                    </div>
+                `;
+            }).join("");
+
+            attachQueueCardEvents();
+            attachQuickActionEvents();
+        }
+
+        function renderQuickActions(itemId, queueIndex, queueLength) {
+            const options = buildPositionOptions(queueIndex, queueLength);
+
+            return `
+                <div class="quick-actions-row" onclick="event.stopPropagation()">
+                    <button class="quick-action-btn" onclick="moveQueueItem(${itemId}, 'next')">Next song</button>
+                    <button class="quick-action-btn secondary" onclick="moveQueueItem(${itemId}, 'last')">Last song</button>
+                    ${
+                        options.length
+                            ? `<div class="quick-action-select-wrap">
+                                    <select class="quick-action-select" onchange="handlePositionChange(${itemId}, this.value)">
+                                        <option value="">Move to...</option>
+                                        ${options.map(opt => `<option value="${opt.targetIndex}">${opt.label}</option>`).join("")}
+                                    </select>
+                               </div>`
+                            : ``
+                    }
+                </div>
+            `;
+        }
+
+        function buildPositionOptions(queueIndex, queueLength) {
+            const options = [];
+            for (let overallPos = 3; overallPos <= queueLength; overallPos++) {
+                const targetIndex = overallPos - 2;
+                if (targetIndex === queueIndex) continue;
+                options.push({
+                    label: `Position ${overallPos}`,
+                    targetIndex
+                });
+            }
+            return options;
+        }
+
+        function attachQueueCardEvents() {
+            const cards = document.querySelectorAll("#queueBox .queue-item-card");
+
+            cards.forEach(card => {
+                const itemId = Number(card.dataset.itemId);
+
+                card.addEventListener("click", (event) => {
+                    if (Date.now() < suppressNextCardClickUntil) return;
+                    if (event.target.closest(".quick-actions-row")) return;
+                    selectedQueueItemId = (selectedQueueItemId === itemId) ? null : itemId;
+                    renderQueueFromDomState();
+                });
+            });
+        }
+
+        function attachQuickActionEvents() {
+            const actionContainers = document.querySelectorAll("#queueBox .quick-actions-row");
+            const selects = document.querySelectorAll("#queueBox .quick-action-select");
+
+            actionContainers.forEach(el => {
+                ["pointerdown", "mousedown", "touchstart", "click"].forEach(evt => {
+                    el.addEventListener(evt, () => {
+                        suppressNextCardClickUntil = Date.now() + 5000;
+                    });
+                });
+            });
+
+            selects.forEach(el => {
+                ["focus", "pointerdown", "mousedown", "touchstart", "click"].forEach(evt => {
+                    el.addEventListener(evt, () => {
+                        suppressNextCardClickUntil = Date.now() + 10000;
+                    });
+                });
+
+                el.addEventListener("blur", () => {
+                    setTimeout(() => {
+                        suppressNextCardClickUntil = 0;
+                        refreshState();
+                    }, 150);
+                });
+            });
+        }
+
+        async function renderQueueFromDomState() {
+            const res = await fetch(`/api/rooms/${ROOM_CODE}/state`);
+            const data = await res.json();
+            renderQueue(data.queue || []);
+        }
+
+        async function sendReorder(orderedIds) {
+            await fetch(`/api/rooms/${ROOM_CODE}/reorder_queue`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ordered_ids: orderedIds })
+            });
+        }
+
+        async function moveQueueItem(itemId, mode) {
+            suppressNextCardClickUntil = Date.now() + 3000;
+
+            const queueBox = document.getElementById("queueBox");
+            const orderedIds = Array.from(queueBox.querySelectorAll("[data-item-id]"))
+                .map(el => Number(el.dataset.itemId));
+
+            const fromIndex = orderedIds.indexOf(itemId);
+            if (fromIndex < 0) return;
+
+            const [moved] = orderedIds.splice(fromIndex, 1);
+
+            if (mode === "next") {
+                orderedIds.splice(0, 0, moved);
+            } else if (mode === "last") {
+                orderedIds.push(moved);
+            }
+
+            await sendReorder(orderedIds);
+            suppressNextCardClickUntil = 0;
+            refreshState();
+        }
+
+        async function handlePositionChange(itemId, targetIndexValue) {
+            suppressNextCardClickUntil = Date.now() + 3000;
+
+            if (!targetIndexValue) return;
+
+            const targetIndex = Number(targetIndexValue);
+            if (Number.isNaN(targetIndex)) return;
+
+            const queueBox = document.getElementById("queueBox");
+            const orderedIds = Array.from(queueBox.querySelectorAll("[data-item-id]"))
+                .map(el => Number(el.dataset.itemId));
+
+            const fromIndex = orderedIds.indexOf(itemId);
+            if (fromIndex < 0 || fromIndex === targetIndex) return;
+
+            const [moved] = orderedIds.splice(fromIndex, 1);
+            orderedIds.splice(targetIndex, 0, moved);
+
+            await sendReorder(orderedIds);
+            suppressNextCardClickUntil = 0;
+            refreshState();
+        }
+
+        async function manualPlay() {
+            await fetch(`/api/rooms/${ROOM_CODE}/play`, { method: "POST" });
+            refreshState();
+
+            setTimeout(() => {
+                try {
+                    player.playVideo();
+                    setOverlay("", false);
+                } catch (err) {
+                    console.error(err);
+                }
+            }, 300);
+        }
+
+        async function manualSkip() {
+            await fetch(`/api/rooms/${ROOM_CODE}/skip`, { method: "POST" });
+            refreshState();
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+        setInterval(refreshState, 1500);
+    </script>
+</body>
+</html>
