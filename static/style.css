@@ -352,7 +352,7 @@ hr {
 }
 
 .player-panel:fullscreen .video-qr-overlay {
-    top: 18px;
+    top: 70px;
     right: 18px;
     z-index: 9999;
 }
@@ -387,7 +387,7 @@ hr {
 
 .video-qr-overlay {
     position: absolute;
-    top: 14px;
+    top: 46px;
     right: 14px;
     z-index: 4;
     background: linear-gradient(
