@@ -491,7 +491,7 @@ hr {
 }
 
 .song-title {
-    font-size: 14px;
+    font-size: 18px;
     line-height: 1.35;
     font-weight: bold;
     color: #fff6ea;
@@ -661,9 +661,9 @@ hr {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    min-width: 24px;
-    font-size: 20px;
+    width: 18px;
+    min-width: 18px;
+    font-size: 16px;
     font-weight: bold;
     color: rgba(255,255,255,0.72);
     cursor: grab;
@@ -684,7 +684,7 @@ hr {
 }
 
 .queue-item-card {
-    grid-template-columns: 16px 92px 1fr;
+    grid-template-columns: 18px 92px 1fr;
     transition:
         transform 0.15s ease,
         box-shadow 0.15s ease,
@@ -712,6 +712,44 @@ hr {
         0 0 0 2px rgba(255,159,67,0.30),
         0 0 22px rgba(255,159,67,0.16),
         0 18px 36px rgba(0,0,0,0.38);
+}
+
+/* Computer tuning */
+@media (min-width: 721px) {
+    .queue-item-card {
+        grid-template-columns: 16px 84px 1fr;
+    }
+
+    .queue-item-card img {
+        width: 84px;
+        height: 64px;
+    }
+
+    .queue-item-card .song-title {
+        font-size: 16px;
+        line-height: 1.25;
+    }
+
+    .queue-item-card .song-sub {
+        margin-top: 6px;
+        font-size: 13px;
+    }
+
+    .queue-item-card .drag-handle {
+        width: 16px;
+        min-width: 16px;
+        font-size: 16px;
+    }
+
+    .queue-item-card .quick-actions-row {
+        gap: 6px;
+        margin-top: 10px;
+    }
+
+    .queue-item-card .quick-action-btn {
+        padding: 7px 10px;
+        font-size: 12px;
+    }
 }
 
 .mobile-page {
@@ -758,6 +796,7 @@ hr {
     }
 }
 
+/* Mobile tuning */
 @media (max-width: 720px) {
     .page-topbar {
         flex-direction: column;
@@ -777,18 +816,38 @@ hr {
     }
 
     .queue-item-card {
-        grid-template-columns: 20px 96px 1fr;
+        grid-template-columns: 20px 88px 1fr;
     }
 
     .song-card img {
-        width: 92px;
-        height: 68px;
+        width: 88px;
+        height: 66px;
+    }
+
+    .queue-item-card .song-title {
+        font-size: 14px;
+        line-height: 1.28;
+    }
+
+    .queue-item-card .song-sub {
+        margin-top: 6px;
+        font-size: 12px;
+    }
+
+    .queue-item-card .quick-actions-row {
+        gap: 6px;
+        margin-top: 10px;
+    }
+
+    .queue-item-card .quick-action-btn {
+        padding: 7px 10px;
+        font-size: 12px;
     }
 
     .drag-handle {
         width: 16px;
         min-width: 16px;
-        font-size: 16px;
+        font-size: 15px;
     }
 
     .video-qr-overlay {
