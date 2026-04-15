@@ -491,7 +491,7 @@ hr {
 }
 
 .song-title {
-    font-size: 18px;
+    font-size: 14px;
     line-height: 1.35;
     font-weight: bold;
     color: #fff6ea;
@@ -684,7 +684,7 @@ hr {
 }
 
 .queue-item-card {
-    grid-template-columns: 24px 110px 1fr;
+    grid-template-columns: 16px 92px 1fr;
     transition:
         transform 0.15s ease,
         box-shadow 0.15s ease,
@@ -781,14 +781,14 @@ hr {
     }
 
     .song-card img {
-        width: 96px;
-        height: 72px;
+        width: 92px;
+        height: 68px;
     }
 
     .drag-handle {
-        width: 20px;
-        min-width: 20px;
-        font-size: 18px;
+        width: 16px;
+        min-width: 16px;
+        font-size: 16px;
     }
 
     .video-qr-overlay {
