@@ -845,9 +845,9 @@ hr {
     }
 
     .drag-handle {
-        width: 16px;
-        min-width: 16px;
-        font-size: 15px;
+        width: 20px;
+        min-width: 20px;
+        font-size: 18px;
     }
 
     .video-qr-overlay {
