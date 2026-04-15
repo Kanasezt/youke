@@ -36,6 +36,7 @@
                 <div class="button-row left-buttons">
                     <button class="magic-btn green" onclick="manualPlay()">▶ Play</button>
                     <button class="magic-btn orange" onclick="manualSkip()">⏭ Skip</button>
+                    <button class="magic-btn blue" onclick="manualPause()">⏸ Pause</button>
                     <button class="magic-btn blue" onclick="toggleFullscreen()">⛶ Fullscreen</button>
                 </div>
             </div>
@@ -68,7 +69,15 @@
         let currentVideoId = null;
         let currentIsPlaying = null;
         let selectedQueueItemId = null;
-        let suppressNextCardClickUntil = 0;
+        let quickActionLockUntil = 0;
+
+        function lockQuickActions(ms = 5000) {
+            quickActionLockUntil = Date.now() + ms;
+        }
+
+        function isQuickActionsLocked() {
+            return Date.now() < quickActionLockUntil;
+        }
 
         document.getElementById("mobileUrlText").textContent = MOBILE_URL;
 
@@ -138,6 +147,10 @@
                 setOverlay("", false);
             }
 
+            if (event.data === YT.PlayerState.PAUSED) {
+                setOverlay("", false);
+            }
+
             if (event.data === YT.PlayerState.ENDED) {
                 fetch(`/api/rooms/${ROOM_CODE}/skip`, { method: "POST" })
                     .then(r => r.json())
@@ -159,7 +172,10 @@
             const data = await res.json();
 
             renderCurrent(data.current);
-            renderQueue(data.queue || []);
+
+            if (!isQuickActionsLocked()) {
+                renderQueue(data.queue || []);
+            }
 
             if (!ytReady || !player) return;
 
@@ -170,11 +186,12 @@
             if (!current) {
                 currentVideoId = null;
                 currentIsPlaying = false;
+                lastNonce = nonce;
                 setOverlay("No song playing", true);
                 return;
             }
 
-            if (nonce !== lastNonce || current.videoId !== currentVideoId) {
+            if (current.videoId !== currentVideoId) {
                 lastNonce = nonce;
                 currentVideoId = current.videoId;
                 currentIsPlaying = shouldPlay;
@@ -191,6 +208,8 @@
                     try {
                         if (shouldPlay) {
                             player.playVideo();
+                        } else {
+                            player.pauseVideo();
                         }
                     } catch (err) {
                         console.error(err);
@@ -210,11 +229,17 @@
                 return;
             }
 
+            if (nonce !== lastNonce) {
+                lastNonce = nonce;
+            }
+
             if (shouldPlay !== currentIsPlaying) {
                 currentIsPlaying = shouldPlay;
                 try {
                     if (shouldPlay) {
                         player.playVideo();
+                    } else {
+                        player.pauseVideo();
                     }
                 } catch (err) {
                     console.error(err);
@@ -280,8 +305,9 @@
 
             return `
                 <div class="quick-actions-row" onclick="event.stopPropagation()">
-                    <button class="quick-action-btn" onclick="moveQueueItem(${itemId}, 'next')">Next song</button>
-                    <button class="quick-action-btn secondary" onclick="moveQueueItem(${itemId}, 'last')">Last song</button>
+                    <button class="quick-action-btn" onclick="moveQueueItem(${itemId}, 'next')">Next</button>
+                    <button class="quick-action-btn secondary" onclick="moveQueueItem(${itemId}, 'last')">Last</button>
+                    <button class="quick-action-btn secondary" onclick="deleteQueueItem(${itemId})">🗑</button>
                     ${
                         options.length
                             ? `<div class="quick-action-select-wrap">
@@ -316,8 +342,8 @@
                 const itemId = Number(card.dataset.itemId);
 
                 card.addEventListener("click", (event) => {
-                    if (Date.now() < suppressNextCardClickUntil) return;
                     if (event.target.closest(".quick-actions-row")) return;
+                    if (Date.now() < quickActionLockUntil) return;
                     selectedQueueItemId = (selectedQueueItemId === itemId) ? null : itemId;
                     renderQueueFromDomState();
                 });
@@ -330,22 +356,18 @@
 
             actionContainers.forEach(el => {
                 ["pointerdown", "mousedown", "touchstart", "click"].forEach(evt => {
-                    el.addEventListener(evt, () => {
-                        suppressNextCardClickUntil = Date.now() + 5000;
-                    });
+                    el.addEventListener(evt, () => lockQuickActions(5000));
                 });
             });
 
             selects.forEach(el => {
                 ["focus", "pointerdown", "mousedown", "touchstart", "click"].forEach(evt => {
-                    el.addEventListener(evt, () => {
-                        suppressNextCardClickUntil = Date.now() + 10000;
-                    });
+                    el.addEventListener(evt, () => lockQuickActions(10000));
                 });
 
                 el.addEventListener("blur", () => {
                     setTimeout(() => {
-                        suppressNextCardClickUntil = 0;
+                        quickActionLockUntil = 0;
                         refreshState();
                     }, 150);
                 });
@@ -367,7 +389,7 @@
         }
 
         async function moveQueueItem(itemId, mode) {
-            suppressNextCardClickUntil = Date.now() + 3000;
+            lockQuickActions(3000);
 
             const queueBox = document.getElementById("queueBox");
             const orderedIds = Array.from(queueBox.querySelectorAll("[data-item-id]"))
@@ -385,12 +407,12 @@
             }
 
             await sendReorder(orderedIds);
-            suppressNextCardClickUntil = 0;
+            quickActionLockUntil = 0;
             refreshState();
         }
 
         async function handlePositionChange(itemId, targetIndexValue) {
-            suppressNextCardClickUntil = Date.now() + 3000;
+            lockQuickActions(3000);
 
             if (!targetIndexValue) return;
 
@@ -408,7 +430,20 @@
             orderedIds.splice(targetIndex, 0, moved);
 
             await sendReorder(orderedIds);
-            suppressNextCardClickUntil = 0;
+            quickActionLockUntil = 0;
+            refreshState();
+        }
+
+        async function deleteQueueItem(itemId) {
+            lockQuickActions(3000);
+
+            await fetch(`/api/rooms/${ROOM_CODE}/delete`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ item_id: itemId })
+            });
+
+            quickActionLockUntil = 0;
             refreshState();
         }
 
@@ -419,6 +454,20 @@
             setTimeout(() => {
                 try {
                     player.playVideo();
+                    setOverlay("", false);
+                } catch (err) {
+                    console.error(err);
+                }
+            }, 300);
+        }
+
+        async function manualPause() {
+            await fetch(`/api/rooms/${ROOM_CODE}/pause`, { method: "POST" });
+            refreshState();
+
+            setTimeout(() => {
+                try {
+                    player.pauseVideo();
                     setOverlay("", false);
                 } catch (err) {
                     console.error(err);
