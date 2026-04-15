@@ -24,6 +24,7 @@
                 <div class="button-grid top-gap">
                     <button class="magic-btn green" onclick="playSong()">▶ Play</button>
                     <button class="magic-btn orange" onclick="skipSong()">⏭ Skip</button>
+                    <button class="magic-btn blue" onclick="pauseSong()">⏸ Pause</button>
                 </div>
 
                 <div class="section-title top-gap">Search Song</div>
@@ -228,8 +229,9 @@
 
             return `
                 <div class="quick-actions-row" onclick="event.stopPropagation()">
-                    <button class="quick-action-btn" onclick="moveQueueItem(${itemId}, 'next')">Next song</button>
-                    <button class="quick-action-btn secondary" onclick="moveQueueItem(${itemId}, 'last')">Last song</button>
+                    <button class="quick-action-btn" onclick="moveQueueItem(${itemId}, 'next')">Next</button>
+                    <button class="quick-action-btn secondary" onclick="moveQueueItem(${itemId}, 'last')">Last</button>
+                    <button class="quick-action-btn secondary" onclick="deleteQueueItem(${itemId})">🗑</button>
                     ${
                         options.length
                             ? `<div class="quick-action-select-wrap">
@@ -356,6 +358,19 @@
             refreshState();
         }
 
+        async function deleteQueueItem(itemId) {
+            lockQuickActions(3000);
+
+            await fetch(`/api/rooms/${ROOM_CODE}/delete`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ item_id: itemId })
+            });
+
+            quickActionLockUntil = 0;
+            refreshState();
+        }
+
         async function playSong() {
             const msg = document.getElementById("msg");
             const name = saveSingerName();
@@ -375,6 +390,28 @@
             }
 
             msg.textContent = "Play command sent";
+            refreshState();
+        }
+
+        async function pauseSong() {
+            const msg = document.getElementById("msg");
+            const name = saveSingerName();
+
+            if (!name) {
+                msg.textContent = "Please enter your singer name first";
+                document.getElementById("mobile_name").focus();
+                return;
+            }
+
+            const res = await fetch(`/api/rooms/${ROOM_CODE}/pause`, { method: "POST" });
+            const data = await res.json();
+
+            if (!res.ok) {
+                msg.textContent = data.error || "Pause failed";
+                return;
+            }
+
+            msg.textContent = data.message || "Paused";
             refreshState();
         }
 
