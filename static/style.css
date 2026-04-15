@@ -352,7 +352,7 @@ hr {
 }
 
 .player-panel:fullscreen .video-qr-overlay {
-    top: 70px;
+    top: 18px;
     right: 18px;
     z-index: 9999;
 }
@@ -387,7 +387,7 @@ hr {
 
 .video-qr-overlay {
     position: absolute;
-    top: 46px;
+    top: 14px;
     right: 14px;
     z-index: 4;
     background: linear-gradient(
@@ -491,7 +491,7 @@ hr {
 }
 
 .song-title {
-    font-size: 14px;
+    font-size: 18px;
     line-height: 1.35;
     font-weight: bold;
     color: #fff6ea;
@@ -656,6 +656,64 @@ hr {
     color: #111;
 }
 
+.drag-handle {
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    min-width: 24px;
+    font-size: 20px;
+    font-weight: bold;
+    color: rgba(255,255,255,0.72);
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    opacity: 0.9;
+    transition: transform 0.15s ease, opacity 0.15s ease, color 0.15s ease;
+}
+
+.drag-handle:hover {
+    color: #ffd27a;
+    opacity: 1;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+    transform: scale(1.06);
+}
+
+.queue-item-card {
+    grid-template-columns: 24px 110px 1fr;
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        opacity 0.15s ease;
+}
+
+.blue-background-class {
+    opacity: 0.45;
+    background:
+        linear-gradient(135deg, rgba(139,196,255,0.22), rgba(255,255,255,0.06));
+}
+
+.sortable-chosen-card {
+    transform: scale(1.015);
+    box-shadow:
+        0 0 0 1px rgba(255,159,67,0.18),
+        0 0 18px rgba(255,159,67,0.12),
+        0 12px 28px rgba(0,0,0,0.30);
+}
+
+.sortable-drag-card {
+    opacity: 0.96;
+    transform: scale(1.02);
+    box-shadow:
+        0 0 0 2px rgba(255,159,67,0.30),
+        0 0 22px rgba(255,159,67,0.16),
+        0 18px 36px rgba(0,0,0,0.38);
+}
+
 .mobile-page {
     min-height: 100vh;
     padding: 0 12px 24px;
@@ -718,9 +776,19 @@ hr {
         grid-template-columns: 96px 1fr;
     }
 
+    .queue-item-card {
+        grid-template-columns: 20px 96px 1fr;
+    }
+
     .song-card img {
         width: 96px;
         height: 72px;
+    }
+
+    .drag-handle {
+        width: 20px;
+        min-width: 20px;
+        font-size: 18px;
     }
 
     .video-qr-overlay {
