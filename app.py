@@ -116,7 +116,6 @@ def search_songs(query: str, limit: int = 20) -> list[dict]:
     where_parts: list[str] = ["embed_ok = 1"]
     params: list = []
 
-    # ทุก token ต้อง match อย่างน้อยใน title หรือ channel_name
     for term in terms:
         where_parts.append("(title ILIKE %s OR channel_name ILIKE %s)")
         params.extend([f"%{term}%", f"%{term}%"])
@@ -365,6 +364,31 @@ def api_reorder_queue(code: str):
     return jsonify({"success": True, "queue_count": len(room["queue"])})
 
 
+@app.route("/api/rooms/<code>/delete", methods=["POST"])
+def api_delete_queue_item(code: str):
+    room = get_room(code)
+    if not room:
+        return jsonify({"error": "room not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    item_id = data.get("item_id")
+
+    if item_id is None:
+        return jsonify({"error": "item_id required"}), 400
+
+    try:
+        item_id = int(item_id)
+    except Exception:
+        return jsonify({"error": "invalid item_id"}), 400
+
+    room["queue"] = [
+        item for item in room["queue"]
+        if item["itemId"] != item_id
+    ]
+
+    return jsonify({"success": True, "queue_count": len(room["queue"])})
+
+
 @app.route("/api/rooms/<code>/play", methods=["POST"])
 def api_play(code: str):
     room = get_room(code)
@@ -376,6 +400,19 @@ def api_play(code: str):
 
     room["is_playing"] = True
     room["player_nonce"] += 1
+    return jsonify({"success": True})
+
+
+@app.route("/api/rooms/<code>/pause", methods=["POST"])
+def api_pause(code: str):
+    room = get_room(code)
+    if not room:
+        return jsonify({"error": "room not found"}), 404
+
+    if room["current"] is None:
+        return jsonify({"error": "no current video"}), 400
+
+    room["is_playing"] = False
     return jsonify({"success": True})
 
 
