@@ -712,6 +712,7 @@ hr {
         0 0 0 2px rgba(255,159,67,0.30),
         0 0 22px rgba(255,159,67,0.16),
         0 18px 36px rgba(0,0,0,0.38);
+    overflow: visible;
 }
 
 /* Computer tuning */
@@ -816,7 +817,7 @@ hr {
     }
 
     .queue-item-card {
-        grid-template-columns: 20px 88px 1fr;
+        grid-template-columns: 22px 88px 1fr;
     }
 
     .song-card img {
@@ -845,8 +846,8 @@ hr {
     }
 
     .drag-handle {
-        width: 20px;
-        min-width: 20px;
+        width: 22px;
+        min-width: 22px;
         font-size: 18px;
     }
 
