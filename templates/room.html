@@ -15,7 +15,11 @@
     <div class="computer-page">
         <div class="page-topbar">
             <div class="topbar-title">🎤 YouKe</div>
-            <div class="room-badge">Room {{ code }}</div>
+            <div class="language-switch" data-language-switch>
+                <button type="button" data-lang-choice="en">EN</button>
+                <button type="button" data-lang-choice="th">ไทย</button>
+            </div>
+            <div class="room-badge"><span data-i18n="room">Room</span> {{ code }}</div>
         </div>
 
         <div class="computer-layout">
@@ -23,10 +27,42 @@
                 <div id="playerPanel" class="player-panel">
                     <div id="player"></div>
                     <div id="playerOverlay" class="overlay-message hidden"></div>
+                    <div id="youtubeFallbackOverlay" class="youtube-fallback-overlay hidden">
+                        <div class="youtube-fallback-card">
+                            <div class="youtube-fallback-pill">YouTube playback</div>
+                            <div class="youtube-fallback-title">This video cannot play inside YouKe.</div>
+                            <div id="youtubeFallbackReason" class="youtube-fallback-copy">
+                                The video owner may not allow iframe playback. Play it in YouTube instead.
+                            </div>
+                            <div id="youtubeFallbackCountdown" class="youtube-fallback-countdown">
+                                Auto skip in 30 seconds.
+                            </div>
+                            <div class="youtube-fallback-actions">
+                                <button type="button" class="youtube-fallback-btn primary" onclick="openCurrentVideoInYoutube()">Open in YouTube</button>
+                                <button type="button" class="youtube-fallback-btn" onclick="manualSkip()">Skip</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="reactionOverlay" class="reaction-overlay"></div>
+                    <div id="songAddToast" class="song-add-toast hidden">
+                        <div class="song-add-toast-label">Added to queue</div>
+                        <div id="songAddToastText" class="song-add-toast-text"></div>
+                    </div>
 
                     <div class="video-qr-overlay">
-                        <div class="video-qr-title">Scan to Search Song</div>
+                        <div class="video-qr-title" data-i18n="scanToSearch">Scan to Search Song</div>
                         <div id="qrcode" class="video-qr-box"></div>
+                        <div class="video-now-next">
+                            <div class="mini-status-row">
+                                <div class="mini-status-label" data-i18n="miniNow">Now</div>
+                                <div id="miniNowSinger" class="mini-status-value">-</div>
+                            </div>
+                            <div class="mini-status-row next-row">
+                                <div class="mini-status-label" data-i18n="miniNext">Next</div>
+                                <div id="miniNextSong" class="mini-status-value">-</div>
+                                <div id="miniNextSinger" class="mini-status-sub">-</div>
+                            </div>
+                        </div>
                     </div>
 
                     <button id="fullscreenBtn" class="fullscreen-fab" onclick="toggleFullscreen()" title="Fullscreen">
@@ -35,24 +71,24 @@
                 </div>
 
                 <div class="button-row left-buttons">
-                    <button class="magic-btn green" onclick="manualPlay()">▶ Play</button>
-                    <button class="magic-btn orange" onclick="manualSkip()">⏭ Skip</button>
-                    <button class="magic-btn blue" onclick="manualPause()">⏸ Pause</button>
-                    <button class="magic-btn blue" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+                    <button class="magic-btn green" onclick="manualPlay()" data-i18n="play">Play</button>
+                    <button class="magic-btn orange" onclick="manualSkip()" data-i18n="skip">Skip</button>
+                    <button class="magic-btn blue" onclick="manualPause()" data-i18n="pause">Pause</button>
+                    <button class="magic-btn blue" onclick="toggleFullscreen()" data-i18n="fullscreen">Fullscreen</button>
                 </div>
             </div>
 
             <div class="sidebar sidebar-scroll">
                 <div class="glass-panel mobile-link-panel">
-                    <div class="section-title small-panel-title">Mobile Link</div>
+                    <div class="section-title small-panel-title" data-i18n="mobileLink">Mobile Link</div>
                     <div class="small muted" id="mobileUrlText"></div>
                 </div>
 
                 <div id="currentBox" class="queue-stack"></div>
 
                 <div class="glass-panel queue-panel">
-                    <div class="section-title small-panel-title">Up Next</div>
-                    <div class="small muted drag-hint">Tap a song card for quick actions. Drag ☰ to reorder.</div>
+                    <div class="section-title small-panel-title" data-i18n="upNext">Up Next</div>
+                    <div class="small muted drag-hint" data-i18n="dragHintComputer">Tap a song card for quick actions. Drag the three lines to reorder.</div>
                     <div id="queueBox" class="queue-stack"></div>
                 </div>
             </div>
@@ -63,6 +99,65 @@
         const ROOM_CODE = "{{ code }}";
         const BASE_URL = "{{ base_url }}";
         const MOBILE_URL = `${BASE_URL}/mobile/${ROOM_CODE}`;
+        const LANG_KEY = "youke_lang";
+        const I18N = {
+            en: {
+                room: "Room",
+                scanToSearch: "Scan to Search Song",
+                play: "Play",
+                skip: "Skip",
+                pause: "Pause",
+                fullscreen: "Fullscreen",
+                mobileLink: "Mobile Link",
+                upNext: "Up Next",
+                dragHintComputer: "Tap a song card for quick actions. Drag the three lines to reorder.",
+                nowPlaying: "NOW PLAYING",
+                singer: "Singer",
+                guest: "Guest",
+                noSongPlaying: "No song playing",
+                queueEmpty: "Queue empty",
+                next: "NEXT",
+                quickNext: "Next",
+                quickLast: "Last",
+                moveTo: "Move to...",
+                position: "Position",
+                noCurrentVideo: "No current video",
+                playing: "Playing",
+                paused: "Paused",
+                miniNow: "Now",
+                miniNext: "Next",
+                noSinger: "No singer",
+                noNextSong: "No next song"
+            },
+            th: {
+                room: "ห้อง",
+                scanToSearch: "สแกนเพื่อค้นหาเพลง",
+                play: "เล่น",
+                skip: "ข้าม",
+                pause: "หยุดชั่วคราว",
+                fullscreen: "เต็มจอ",
+                mobileLink: "ลิงก์มือถือ",
+                upNext: "คิวถัดไป",
+                dragHintComputer: "แตะการ์ดเพื่อดูคำสั่งลัด ลากที่ขีดสามเส้นเพื่อจัดคิว",
+                nowPlaying: "กำลังเล่น",
+                singer: "นักร้อง",
+                guest: "Guest",
+                noSongPlaying: "ยังไม่มีเพลงที่กำลังเล่น",
+                queueEmpty: "ยังไม่มีเพลงในคิว",
+                next: "คิว",
+                quickNext: "ถัดไป",
+                quickLast: "ท้ายคิว",
+                moveTo: "ย้ายไป...",
+                position: "ตำแหน่ง",
+                noCurrentVideo: "ยังไม่มีวิดีโอ",
+                playing: "กำลังเล่น",
+                paused: "หยุดชั่วคราว",
+                miniNow: "ตอนนี้",
+                miniNext: "ถัดไป",
+                noSinger: "ยังไม่มีนักร้อง",
+                noNextSong: "ยังไม่มีเพลงถัดไป"
+            }
+        };
 
         let player = null;
         let ytReady = false;
@@ -72,6 +167,53 @@
         let selectedQueueItemId = null;
         let quickActionLockUntil = 0;
         let queueSortable = null;
+        let isDraggingQueue = false;
+        const seenReactionIds = new Set();
+        let reactionIdleTimer = null;
+        let reactionDrainTimer = null;
+        let reactionDrainOffset = 0;
+        let youtubeFallbackTimer = null;
+        let youtubeFallbackVideoId = null;
+        let youtubeFallbackSecondsLeft = 30;
+        let knownSongItemIds = new Set();
+        let hasInitializedKnownSongs = false;
+        let songAddToastTimer = null;
+        const REACTION_LINE_STEP = 42;
+
+        function getLang() {
+            return localStorage.getItem(LANG_KEY) || "en";
+        }
+
+        function t(key) {
+            return (I18N[getLang()] && I18N[getLang()][key]) || I18N.en[key] || key;
+        }
+
+        function applyLanguage() {
+            document.documentElement.lang = getLang();
+            document.querySelectorAll("[data-i18n]").forEach(el => {
+                el.textContent = t(el.dataset.i18n);
+            });
+            document.querySelectorAll("[data-lang-choice]").forEach(btn => {
+                btn.classList.toggle("active", btn.dataset.langChoice === getLang());
+            });
+
+            const playBtn = document.querySelector('[onclick="manualPlay()"]');
+            const skipBtn = document.querySelector('[onclick="manualSkip()"]');
+            const pauseBtn = document.querySelector('[onclick="manualPause()"]');
+            const fullBtn = document.querySelector('.left-buttons [onclick="toggleFullscreen()"]');
+            if (playBtn) playBtn.textContent = t("play");
+            if (skipBtn) skipBtn.textContent = t("skip");
+            if (pauseBtn) pauseBtn.textContent = t("pause");
+            if (fullBtn) fullBtn.textContent = t("fullscreen");
+        }
+
+        document.querySelectorAll("[data-lang-choice]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                localStorage.setItem(LANG_KEY, btn.dataset.langChoice);
+                applyLanguage();
+                refreshState();
+            });
+        });
 
         function lockQuickActions(ms = 5000) {
             quickActionLockUntil = Date.now() + ms;
@@ -81,6 +223,7 @@
             return Date.now() < quickActionLockUntil;
         }
 
+        applyLanguage();
         document.getElementById("mobileUrlText").textContent = MOBILE_URL;
 
         const qrCanvas = document.createElement("canvas");
@@ -93,6 +236,92 @@
             const overlay = document.getElementById("playerOverlay");
             overlay.textContent = text || "";
             overlay.classList.toggle("hidden", !show);
+        }
+
+        function youtubeWatchUrl(videoId) {
+            return videoId ? `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}` : "https://www.youtube.com/";
+        }
+
+        function clearYoutubeFallbackTimer() {
+            if (youtubeFallbackTimer) {
+                clearInterval(youtubeFallbackTimer);
+                youtubeFallbackTimer = null;
+            }
+        }
+
+        function updateYoutubeFallbackCountdown() {
+            const countdown = document.getElementById("youtubeFallbackCountdown");
+            if (!countdown) return;
+            countdown.textContent = `Auto skip in ${youtubeFallbackSecondsLeft} second${youtubeFallbackSecondsLeft === 1 ? "" : "s"}.`;
+        }
+
+        function startYoutubeFallbackCountdown() {
+            clearYoutubeFallbackTimer();
+            youtubeFallbackVideoId = currentVideoId;
+            youtubeFallbackSecondsLeft = 30;
+            updateYoutubeFallbackCountdown();
+
+            youtubeFallbackTimer = setInterval(() => {
+                youtubeFallbackSecondsLeft -= 1;
+                updateYoutubeFallbackCountdown();
+
+                if (youtubeFallbackSecondsLeft <= 0) {
+                    clearYoutubeFallbackTimer();
+                    if (currentVideoId === youtubeFallbackVideoId) {
+                        manualSkip();
+                    }
+                }
+            }, 1000);
+        }
+
+        function showYoutubeFallback(errorCode) {
+            const fallback = document.getElementById("youtubeFallbackOverlay");
+            const reason = document.getElementById("youtubeFallbackReason");
+            if (!fallback || !reason) return;
+
+            setOverlay("", false);
+
+            if (errorCode === 101 || errorCode === 150) {
+                reason.textContent = "The video owner blocks embedded playback. Tap Play in YouTube to open it in a new window.";
+            } else if (errorCode === 100) {
+                reason.textContent = "YouTube says this video is unavailable here. Tap Play in YouTube to check it directly.";
+            } else {
+                reason.textContent = "YouTube cannot play this video inside the embedded player. Tap Play in YouTube to open it directly.";
+            }
+
+            fallback.classList.remove("hidden");
+            startYoutubeFallbackCountdown();
+        }
+
+        function openCurrentVideoInYoutube() {
+            clearYoutubeFallbackTimer();
+            const popupWidth = window.screen && window.screen.availWidth ? window.screen.availWidth : 1280;
+            const popupHeight = window.screen && window.screen.availHeight ? window.screen.availHeight : 720;
+            const features = [
+                "popup=yes",
+                "noopener",
+                "noreferrer",
+                "left=0",
+                "top=0",
+                `width=${popupWidth}`,
+                `height=${popupHeight}`
+            ].join(",");
+            const youtubeWindow = window.open(youtubeWatchUrl(currentVideoId), "youke_youtube_player", features);
+            if (youtubeWindow) {
+                try {
+                    youtubeWindow.moveTo(0, 0);
+                    youtubeWindow.resizeTo(popupWidth, popupHeight);
+                    youtubeWindow.focus();
+                } catch (err) {
+                    console.error("youtube popup resize error:", err);
+                }
+            }
+        }
+
+        function hideYoutubeFallback() {
+            clearYoutubeFallbackTimer();
+            const fallback = document.getElementById("youtubeFallbackOverlay");
+            if (fallback) fallback.classList.add("hidden");
         }
 
         async function toggleFullscreen() {
@@ -147,6 +376,7 @@
 
             if (event.data === YT.PlayerState.PLAYING) {
                 setOverlay("", false);
+                hideYoutubeFallback();
             }
 
             if (event.data === YT.PlayerState.PAUSED) {
@@ -162,20 +392,19 @@
 
         function onPlayerError(event) {
             console.log("YT player error:", event.data);
-            setOverlay("This video cannot be played or embedded. Skipping...", true);
-
-            fetch(`/api/rooms/${ROOM_CODE}/skip`, { method: "POST" })
-                .then(r => r.json())
-                .then(() => refreshState());
+            showYoutubeFallback(event.data);
         }
 
         async function refreshState() {
             const res = await fetch(`/api/rooms/${ROOM_CODE}/state`);
             const data = await res.json();
 
+            notifyNewSongAdds(data.current, data.queue || []);
             renderCurrent(data.current);
+            updateMiniOverlay(data.current, data.queue || []);
+            renderReactions(data.reactions || []);
 
-            if (!isQuickActionsLocked()) {
+            if (!isQuickActionsLocked() && !isDraggingQueue) {
                 renderQueue(data.queue || []);
             }
 
@@ -189,7 +418,8 @@
                 currentVideoId = null;
                 currentIsPlaying = false;
                 lastNonce = nonce;
-                setOverlay("No song playing", true);
+                hideYoutubeFallback();
+                setOverlay(t("noSongPlaying"), true);
                 return;
             }
 
@@ -198,6 +428,7 @@
                 currentVideoId = current.videoId;
                 currentIsPlaying = shouldPlay;
 
+                hideYoutubeFallback();
                 setOverlay("Loading YouKe song...", true);
 
                 try {
@@ -249,6 +480,149 @@
             }
         }
 
+        function shortSongName(title, maxLength = 46) {
+            const clean = String(title || "").replace(/\s+/g, " ").trim();
+            if (clean.length <= maxLength) return clean;
+            return `${clean.slice(0, maxLength - 1).trim()}…`;
+        }
+
+        function notifyNewSongAdds(current, queue) {
+            const songs = [];
+            if (current && current.itemId) songs.push(current);
+            (queue || []).forEach(item => {
+                if (item && item.itemId) songs.push(item);
+            });
+
+            if (!hasInitializedKnownSongs) {
+                songs.forEach(item => knownSongItemIds.add(item.itemId));
+                hasInitializedKnownSongs = true;
+                return;
+            }
+
+            const newItems = songs.filter(item => !knownSongItemIds.has(item.itemId));
+            songs.forEach(item => knownSongItemIds.add(item.itemId));
+
+            if (!newItems.length) return;
+            showSongAddToast(newItems[newItems.length - 1]);
+        }
+
+        function showSongAddToast(item) {
+            const toast = document.getElementById("songAddToast");
+            const text = document.getElementById("songAddToastText");
+            if (!toast || !text || !item) return;
+
+            const singer = item.requestedBy || t("guest");
+            const title = shortSongName(item.title || item.videoId || "");
+            text.textContent = `${singer} added "${title}"`;
+
+            clearTimeout(songAddToastTimer);
+            toast.classList.remove("hidden");
+            toast.classList.remove("song-add-toast-pop");
+            void toast.offsetWidth;
+            toast.classList.add("song-add-toast-pop");
+
+            songAddToastTimer = setTimeout(() => {
+                toast.classList.add("hidden");
+            }, 4200);
+        }
+
+        function updateMiniOverlay(current, queue) {
+            const nowSinger = document.getElementById("miniNowSinger");
+            const nextSong = document.getElementById("miniNextSong");
+            const nextSinger = document.getElementById("miniNextSinger");
+
+            if (!nowSinger || !nextSong || !nextSinger) return;
+
+            nowSinger.textContent = `${t("singer")} : ${
+                current && current.requestedBy ? current.requestedBy : t("noSinger")
+            }`;
+
+            const next = queue && queue.length ? queue[0] : null;
+            if (next) {
+                nextSong.textContent = next.title || next.videoId || t("noNextSong");
+                nextSinger.textContent = `${t("singer")} : ${next.requestedBy || t("guest")}`;
+            } else {
+                nextSong.textContent = t("noNextSong");
+                nextSinger.textContent = "";
+            }
+        }
+
+        function renderReactions(reactions) {
+            reactions.forEach(reaction => {
+                if (!reaction || seenReactionIds.has(reaction.id)) return;
+                seenReactionIds.add(reaction.id);
+                appendReactionFeedItem(reaction);
+            });
+
+            if (seenReactionIds.size > 200) {
+                const latest = reactions.map(reaction => reaction.id);
+                seenReactionIds.clear();
+                latest.forEach(id => seenReactionIds.add(id));
+            }
+        }
+
+        function layoutReactionFeed() {
+            const overlay = document.getElementById("reactionOverlay");
+            if (!overlay) return;
+
+            const items = Array.from(overlay.children);
+            const lastIndex = items.length - 1;
+            items.forEach((node, index) => {
+                const lineIndex = lastIndex - index + reactionDrainOffset;
+                node.style.bottom = `${8 + (lineIndex * REACTION_LINE_STEP)}px`;
+                node.classList.toggle("reaction-feed-exit", lineIndex >= 5);
+            });
+        }
+
+        function scheduleReactionFeedDrain() {
+            const overlay = document.getElementById("reactionOverlay");
+            if (!overlay) return;
+
+            clearTimeout(reactionIdleTimer);
+            clearTimeout(reactionDrainTimer);
+
+            reactionIdleTimer = setTimeout(() => {
+                if (!overlay.children.length) return;
+                drainReactionFeedLine();
+            }, 10000);
+        }
+
+        function drainReactionFeedLine() {
+            const overlay = document.getElementById("reactionOverlay");
+            if (!overlay || !overlay.children.length) return;
+
+            reactionDrainOffset += 1;
+            layoutReactionFeed();
+            setTimeout(() => {
+                Array.from(overlay.children).forEach(node => {
+                    if (node.classList.contains("reaction-feed-exit")) {
+                        node.remove();
+                    }
+                });
+            }, 420);
+            reactionDrainTimer = setTimeout(drainReactionFeedLine, 620);
+        }
+
+        function appendReactionFeedItem(reaction) {
+            const overlay = document.getElementById("reactionOverlay");
+            if (!overlay) return;
+            clearTimeout(reactionDrainTimer);
+            reactionDrainOffset = 0;
+
+            const node = document.createElement("div");
+            node.className = "reaction-feed-item";
+            node.innerHTML = `
+                <span class="reaction-name">${escapeHtml(reaction.requestedBy || t("guest"))}:</span>
+                <span class="reaction-message">${escapeHtml(reaction.message || "")}</span>
+            `;
+            overlay.appendChild(node);
+            while (overlay.children.length > 5) {
+                overlay.firstElementChild.remove();
+            }
+            layoutReactionFeed();
+            scheduleReactionFeedDrain();
+        }
+
         function renderCurrent(current) {
             const currentBox = document.getElementById("currentBox");
 
@@ -257,14 +631,14 @@
                     <div class="song-card current-song sparkle-card">
                         <img src="${escapeHtml(current.thumbnail)}" alt="thumbnail">
                         <div class="song-text">
-                            <div class="song-pill now-pill">NOW PLAYING</div>
+                            <div class="song-pill now-pill">${t("nowPlaying")}</div>
                             <div class="song-title">${escapeHtml(current.title || current.videoId)}</div>
-                            <div class="song-sub">Singer : ${escapeHtml(current.requestedBy || "Guest")}</div>
+                            <div class="song-sub">${t("singer")} : ${escapeHtml(current.requestedBy || t("guest"))}</div>
                         </div>
                     </div>
                 `;
             } else {
-                currentBox.innerHTML = `<div class="empty-box glass-panel">No song playing</div>`;
+                currentBox.innerHTML = `<div class="empty-box glass-panel">${t("noSongPlaying")}</div>`;
             }
         }
 
@@ -274,7 +648,7 @@
             if (!queue.length) {
                 selectedQueueItemId = null;
                 destroySortable();
-                queueBox.innerHTML = `<div class="empty-box glass-panel">Queue empty</div>`;
+                queueBox.innerHTML = `<div class="empty-box glass-panel">${t("queueEmpty")}</div>`;
                 return;
             }
 
@@ -285,15 +659,15 @@
 
             queueBox.innerHTML = queue.map((item, idx) => {
                 const isSelected = item.itemId === selectedQueueItemId;
-                const cardClasses = `song-card sparkle-card queue-item-card${isSelected ? " queue-item-selected" : ""}`;
+                const cardClasses = `song-card sparkle-card computer-queue-card queue-item-card${isSelected ? " queue-item-selected" : ""}`;
                 return `
                     <div class="${cardClasses}" data-item-id="${item.itemId}">
                         <div class="drag-handle" title="Drag to reorder" aria-label="Drag to reorder">☰</div>
                         <img src="${escapeHtml(item.thumbnail)}" alt="thumbnail">
                         <div class="song-text">
-                            <div class="song-pill result-pill">NEXT ${idx + 1}</div>
+                            <div class="song-pill result-pill">${t("next")} ${idx + 1}</div>
                             <div class="song-title">${escapeHtml(item.title || item.videoId)}</div>
-                            <div class="song-sub">Singer : ${escapeHtml(item.requestedBy || "Guest")}</div>
+                            <div class="song-sub">${t("singer")} : ${escapeHtml(item.requestedBy || t("guest"))}</div>
                             ${isSelected ? renderQuickActions(item.itemId, idx, queue.length) : ""}
                         </div>
                     </div>
@@ -310,14 +684,14 @@
 
             return `
                 <div class="quick-actions-row" onclick="event.stopPropagation()">
-                    <button class="quick-action-btn" onclick="moveQueueItem(${itemId}, 'next')">Next</button>
-                    <button class="quick-action-btn secondary" onclick="moveQueueItem(${itemId}, 'last')">Last</button>
+                    <button class="quick-action-btn" onclick="moveQueueItem(${itemId}, 'next')">${t("quickNext")}</button>
+                    <button class="quick-action-btn secondary" onclick="moveQueueItem(${itemId}, 'last')">${t("quickLast")}</button>
                     <button class="quick-action-btn secondary" onclick="deleteQueueItem(${itemId})">🗑</button>
                     ${
                         options.length
                             ? `<div class="quick-action-select-wrap">
                                     <select class="quick-action-select" onchange="handlePositionChange(${itemId}, this.value)">
-                                        <option value="">Move to...</option>
+                                        <option value="">${t("moveTo")}</option>
                                         ${options.map(opt => `<option value="${opt.targetIndex}">${opt.label}</option>`).join("")}
                                     </select>
                                </div>`
@@ -333,7 +707,7 @@
                 const targetIndex = overallPos - 2;
                 if (targetIndex === queueIndex) continue;
                 options.push({
-                    label: `Position ${overallPos}`,
+                    label: `${t("position")} ${overallPos}`,
                     targetIndex
                 });
             }
@@ -348,7 +722,7 @@
 
                 card.addEventListener("click", (event) => {
                     if (event.target.closest(".quick-actions-row")) return;
-                    if (event.target.closest(".drag-handle")) return;
+                    if (isDraggingQueue) return;
                     if (Date.now() < quickActionLockUntil) return;
                     selectedQueueItemId = (selectedQueueItemId === itemId) ? null : itemId;
                     renderQueueFromDomState();
@@ -395,11 +769,15 @@
 
             queueSortable = new Sortable(queueBox, {
                 animation: 150,
-                ghostClass: "blue-background-class",
+                ghostClass: "queue-drop-placeholder",
                 chosenClass: "sortable-chosen-card",
-                dragClass: "sortable-drag-card",
                 handle: ".drag-handle",
+                scroll: true,
+                scrollSensitivity: 64,
+                scrollSpeed: 12,
                 onStart: () => {
+                    isDraggingQueue = true;
+                    document.body.classList.add("queue-drag-active");
                     lockQuickActions(10000);
                 },
                 onEnd: async () => {
@@ -408,8 +786,14 @@
                     ).map(el => Number(el.dataset.itemId));
 
                     await sendReorder(orderedIds);
+                    isDraggingQueue = false;
+                    document.body.classList.remove("queue-drag-active");
                     quickActionLockUntil = 0;
                     refreshState();
+                },
+                onUnchoose: () => {
+                    isDraggingQueue = false;
+                    document.body.classList.remove("queue-drag-active");
                 }
             });
         }
@@ -516,6 +900,7 @@
         }
 
         async function manualSkip() {
+            hideYoutubeFallback();
             await fetch(`/api/rooms/${ROOM_CODE}/skip`, { method: "POST" });
             refreshState();
         }
