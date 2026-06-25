@@ -11,81 +11,193 @@
 
     <div class="page-center">
         <div class="glass-card narrow">
-            <h1 class="glow-title">✨ YouKe Karaoke ✨</h1>
-            <p class="muted intro-text">
+            <div class="language-switch centered" data-language-switch>
+                <button type="button" data-lang-choice="en">EN</button>
+                <button type="button" data-lang-choice="th">ไทย</button>
+            </div>
+
+            <h1 class="glow-title">YouKe Karaoke</h1>
+            <p class="muted intro-text" data-i18n="intro">
                 Create a YouKe room on computer, then scan QR with mobile to search songs and control play or skip.
             </p>
 
             <div class="info-box">
-                <strong>Song database:</strong>
+                <strong data-i18n="songDb">Song database:</strong>
                 {% if db_exists %}
-                    Ready
+                    <span data-i18n="ready">Ready</span>
                 {% else %}
-                    Not configured
+                    <span data-i18n="notConfigured">Not configured</span>
                 {% endif %}
             </div>
 
-            <div class="terms-box">
-                <div class="terms-title">Terms & Conditions</div>
-                <div class="terms-content">
-                    <p>
-                        YouKe Karaoke is provided solely for private, personal, and in-home entertainment use.
-                    </p>
-                    <p>
-                        This web app is currently intended only as a non-commercial queue and control interface for karaoke playback among family members, friends, or household guests.
-                    </p>
-                    <p>
-                        YouKe Karaoke is not currently licensed, approved, or confirmed by Google, YouTube, or any copyright owner for commercial operation, public performance, venue usage, paid access, or revenue-generating activities of any kind.
-                    </p>
-                    <p>
-                        Any individual, venue, organizer, host, company, or third party who uses this web app for commercial purposes, public activities, monetized events, business operations, rentals, paid karaoke services, or any other non-private use does so entirely at their own risk and shall be solely responsible for obtaining all necessary permissions, licenses, royalty clearances, and copyright compliance from the relevant rightsholders and applicable authorities.
-                    </p>
-                    <p>
-                        The creator, developer, operator, and distributor of YouKe Karaoke do not assume responsibility for any copyright infringement, licensing violation, public performance violation, monetization dispute, platform policy breach, or legal claim arising from any commercial or unauthorized use of this web app.
-                    </p>
-                    <p>
-                        By creating or using a room, you acknowledge and agree that you will use this service only in a lawful manner and that any commercial or public-use liability remains entirely with the user.
-                    </p>
+            <div class="info-box capacity-box">
+                <strong data-i18n="roomCapacity">Room capacity:</strong>
+                <span>{{ active_room_count }} / {{ room_max_active }}</span>
+            </div>
+
+            {% if room_error == "room_full" %}
+                <div class="capacity-alert" role="alert" data-i18n="roomFull">
+                    All karaoke rooms are currently occupied. Please try again later.
                 </div>
+            {% elif room_capacity_full %}
+                <div class="capacity-alert soft" role="status" data-i18n="roomNearlyFull">
+                    Rooms are currently full. New rooms will open when inactive rooms expire.
+                </div>
+            {% endif %}
+
+            <div class="terms-box compact-terms">
+                <div class="terms-title" data-i18n="noticeTitle">Private-use notice</div>
+                <p class="terms-summary" data-i18n="noticeBody">
+                    YouKe Karaoke is a private, home-use queue and control tool. It does not host, stream, or provide any YouTube content. Please use it lawfully and make sure you have any rights or permissions required for your situation.
+                </p>
 
                 <label class="terms-check">
                     <input type="checkbox" id="acceptTerms">
-                    <span>I have read and agree to the Terms & Conditions above.</span>
+                    <span data-i18n="acceptTerms">I agree to use YouKe for lawful private use.</span>
                 </label>
+
+                <button type="button" class="terms-toggle" onclick="toggleFullTerms()" data-i18n="showFullTerms">
+                    Show full terms
+                </button>
+
+                <div id="fullTerms" class="full-terms hidden">
+                    <div class="terms-title small-terms-title" data-i18n="termsTitle">Full terms</div>
+                    <div class="terms-content">
+                        <p data-i18n="term1">YouKe Karaoke is provided solely for private, personal, and in-home entertainment use.</p>
+                        <p data-i18n="term2">This web app is currently intended only as a non-commercial queue and control interface for karaoke playback among family members, friends, or household guests.</p>
+                        <p data-i18n="term3">YouKe Karaoke is not currently licensed, approved, or confirmed by Google, YouTube, or any copyright owner for commercial operation, public performance, venue usage, paid access, or revenue-generating activities of any kind.</p>
+                        <p data-i18n="term4">Any individual, venue, organizer, host, company, or third party who uses this web app for commercial purposes, public activities, monetized events, business operations, rentals, paid karaoke services, or any other non-private use does so entirely at their own risk and shall be solely responsible for obtaining all necessary permissions, licenses, royalty clearances, and copyright compliance from the relevant rightsholders and applicable authorities.</p>
+                        <p data-i18n="term5">The creator, developer, operator, and distributor of YouKe Karaoke do not assume responsibility for any copyright infringement, licensing violation, public performance violation, monetization dispute, platform policy breach, or legal claim arising from any commercial or unauthorized use of this web app.</p>
+                        <p data-i18n="term6">By creating or using a room, you acknowledge and agree that you will use this service only in a lawful manner and that any commercial or public-use liability remains entirely with the user.</p>
+                    </div>
+                </div>
             </div>
 
             <form action="/create" method="post" onsubmit="return validateTerms();">
-                <button type="submit" class="magic-btn pink">Create Room</button>
+                <button type="submit" class="magic-btn pink" data-i18n="createRoom">Create Room</button>
             </form>
 
             <hr>
 
             <form action="/join" method="post">
-                <input type="text" name="room_code" placeholder="Enter Room Code" required>
-                <button type="submit" class="magic-btn blue">Join by Room Code</button>
+                <input type="text" name="room_code" data-i18n-placeholder="roomCodePlaceholder" placeholder="Enter Room Code" required>
+                <button type="submit" class="magic-btn blue" data-i18n="joinRoom">Join by Room Code</button>
             </form>
 
             <div class="info-box small muted" style="margin-top:18px; line-height:1.6;">
-                <strong>Compliance Notice</strong><br><br>
-                This web application utilizes the official YouTube IFrame Player API to provide content.
-                YouKe Karaoke does not host, stream, or redistribute any video content.
-                All YouTube videos and content remain the property of their respective owners.
-                Fees charged within this app are strictly for "Queue Management Software Services"
-                and do not include rights to any YouTube content.
-                For private, home-use only.
+                <strong data-i18n="complianceTitle">Compliance Notice</strong><br><br>
+                <span data-i18n="complianceBody">This web application uses the official YouTube IFrame Player API. YouKe Karaoke does not host, stream, or redistribute video content. All YouTube videos remain the property of their respective owners.</span>
             </div>
         </div>
     </div>
 
     <script>
+        const LANG_KEY = "youke_lang";
+        const I18N = {
+            en: {
+                intro: "Create a YouKe room on computer, then scan QR with mobile to search songs and control play or skip.",
+                songDb: "Song database:",
+                ready: "Ready",
+                notConfigured: "Not configured",
+                noticeTitle: "Private-use notice",
+                noticeBody: "YouKe Karaoke is a private, home-use queue and control tool. It does not host, stream, or provide any YouTube content. Please use it lawfully and make sure you have any rights or permissions required for your situation.",
+                acceptTerms: "I agree to use YouKe for lawful private use.",
+                showFullTerms: "Show full terms",
+                hideFullTerms: "Hide full terms",
+                termsTitle: "Full terms",
+                term1: "YouKe Karaoke is provided solely for private, personal, and in-home entertainment use.",
+                term2: "This web app is currently intended only as a non-commercial queue and control interface for karaoke playback among family members, friends, or household guests.",
+                term3: "YouKe Karaoke is not currently licensed, approved, or confirmed by Google, YouTube, or any copyright owner for commercial operation, public performance, venue usage, paid access, or revenue-generating activities of any kind.",
+                term4: "Any individual, venue, organizer, host, company, or third party who uses this web app for commercial purposes, public activities, monetized events, business operations, rentals, paid karaoke services, or any other non-private use does so entirely at their own risk and shall be solely responsible for obtaining all necessary permissions, licenses, royalty clearances, and copyright compliance from the relevant rightsholders and applicable authorities.",
+                term5: "The creator, developer, operator, and distributor of YouKe Karaoke do not assume responsibility for any copyright infringement, licensing violation, public performance violation, monetization dispute, platform policy breach, or legal claim arising from any commercial or unauthorized use of this web app.",
+                term6: "By creating or using a room, you acknowledge and agree that you will use this service only in a lawful manner and that any commercial or public-use liability remains entirely with the user.",
+                createRoom: "Create Room",
+                joinRoom: "Join by Room Code",
+                roomCodePlaceholder: "Enter Room Code",
+                roomCapacity: "Room capacity:",
+                roomFull: "All karaoke rooms are currently occupied. Please try again later.",
+                roomNearlyFull: "Rooms are currently full. New rooms will open when inactive rooms expire.",
+                complianceTitle: "Compliance Notice",
+                complianceBody: "This web application uses the official YouTube IFrame Player API. YouKe Karaoke does not host, stream, or redistribute video content. All YouTube videos remain the property of their respective owners.",
+                acceptAlert: "Please agree to the private-use notice before creating a room."
+            },
+            th: {
+                intro: "สร้างห้อง YouKe บนคอมพิวเตอร์ แล้วสแกน QR ด้วยมือถือเพื่อค้นหาเพลงและควบคุมการเล่น",
+                songDb: "ฐานข้อมูลเพลง:",
+                ready: "พร้อมใช้งาน",
+                notConfigured: "ยังไม่ได้ตั้งค่า",
+                noticeTitle: "ประกาศการใช้งานส่วนตัว",
+                noticeBody: "YouKe Karaoke เป็นเครื่องมือจัดคิวและควบคุมคาราโอเกะสำหรับใช้งานส่วนตัวภายในบ้านเท่านั้น แอปนี้ไม่ได้โฮสต์ สตรีม หรือจัดหาเนื้อหา YouTube ใด ๆ กรุณาใช้งานอย่างถูกกฎหมาย และตรวจสอบสิทธิ์หรือการอนุญาตที่จำเป็นตามกรณีของคุณ",
+                acceptTerms: "ฉันยอมรับว่าจะใช้ YouKe อย่างถูกกฎหมายเพื่อการใช้งานส่วนตัว",
+                showFullTerms: "แสดงเงื่อนไขฉบับเต็ม",
+                hideFullTerms: "ซ่อนเงื่อนไขฉบับเต็ม",
+                termsTitle: "เงื่อนไขฉบับเต็ม",
+                term1: "YouKe Karaoke จัดทำขึ้นเพื่อความบันเทิงส่วนตัว ภายในบ้าน และการใช้งานส่วนบุคคลเท่านั้น",
+                term2: "เว็บแอปนี้มีไว้เป็นระบบจัดคิวและควบคุมคาราโอเกะแบบไม่ใช่เชิงพาณิชย์ สำหรับครอบครัว เพื่อน หรือแขกในบ้าน",
+                term3: "YouKe Karaoke ยังไม่ได้รับอนุญาต รับรอง หรือยืนยันจาก Google, YouTube หรือเจ้าของลิขสิทธิ์สำหรับการใช้งานเชิงพาณิชย์ การแสดงสาธารณะ หรือกิจกรรมที่ก่อรายได้",
+                term4: "ผู้ใช้ที่นำเว็บแอปนี้ไปใช้เชิงพาณิชย์ งานสาธารณะ งานที่มีรายได้ ธุรกิจ หรือบริการคาราโอเกะใด ๆ ต้องรับผิดชอบเองทั้งหมดในการขออนุญาต ใบอนุญาต และการปฏิบัติตามกฎหมายลิขสิทธิ์",
+                term5: "ผู้สร้าง ผู้พัฒนา ผู้ให้บริการ และผู้เผยแพร่ YouKe Karaoke ไม่รับผิดชอบต่อข้อพิพาทหรือข้อเรียกร้องทางกฎหมายจากการใช้งานเชิงพาณิชย์หรือการใช้งานที่ไม่ได้รับอนุญาต",
+                term6: "เมื่อสร้างหรือใช้ห้อง คุณยอมรับว่าจะใช้บริการนี้อย่างถูกกฎหมาย และความรับผิดชอบจากการใช้งานเชิงพาณิชย์หรือสาธารณะเป็นของผู้ใช้เท่านั้น",
+                createRoom: "สร้างห้อง",
+                joinRoom: "เข้าห้องด้วยรหัส",
+                roomCodePlaceholder: "กรอกรหัสห้อง",
+                complianceTitle: "ประกาศการใช้งาน",
+                complianceBody: "เว็บแอปนี้ใช้ YouTube IFrame Player API อย่างเป็นทางการ YouKe Karaoke ไม่ได้โฮสต์ สตรีม หรือแจกจ่ายวิดีโอใด ๆ วิดีโอ YouTube ทั้งหมดเป็นทรัพย์สินของเจ้าของสิทธิ์แต่ละราย",
+                acceptAlert: "กรุณายอมรับประกาศการใช้งานส่วนตัวก่อนสร้างห้อง"
+            }
+        };
+
+        function getLang() {
+            return localStorage.getItem(LANG_KEY) || "en";
+        }
+
+        function t(key) {
+            return (I18N[getLang()] && I18N[getLang()][key]) || I18N.en[key] || key;
+        }
+
+        function applyLanguage() {
+            document.documentElement.lang = getLang();
+            document.querySelectorAll("[data-i18n]").forEach(el => {
+                el.textContent = t(el.dataset.i18n);
+            });
+            document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+                el.placeholder = t(el.dataset.i18nPlaceholder);
+            });
+            document.querySelectorAll("[data-lang-choice]").forEach(btn => {
+                btn.classList.toggle("active", btn.dataset.langChoice === getLang());
+            });
+            updateTermsToggleText();
+        }
+
+        function updateTermsToggleText() {
+            const fullTerms = document.getElementById("fullTerms");
+            const toggle = document.querySelector(".terms-toggle");
+            if (!fullTerms || !toggle) return;
+            toggle.textContent = fullTerms.classList.contains("hidden") ? t("showFullTerms") : t("hideFullTerms");
+        }
+
+        function toggleFullTerms() {
+            document.getElementById("fullTerms").classList.toggle("hidden");
+            updateTermsToggleText();
+        }
+
+        document.querySelectorAll("[data-lang-choice]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                localStorage.setItem(LANG_KEY, btn.dataset.langChoice);
+                applyLanguage();
+            });
+        });
+
         function validateTerms() {
             const accepted = document.getElementById("acceptTerms").checked;
             if (!accepted) {
-                alert("Please accept the Terms & Conditions before creating a room.");
+                alert(t("acceptAlert"));
                 return false;
             }
             return true;
         }
+
+        applyLanguage();
     </script>
 </body>
 </html>
