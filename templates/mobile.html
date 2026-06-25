@@ -13,32 +13,59 @@
     <div class="mobile-page">
         <div class="page-topbar mobile-topbar">
             <div class="topbar-title">🎶 YouKe Karaoke</div>
-            <div class="room-badge">Room {{ code }}</div>
+            <div class="language-switch" data-language-switch>
+                <button type="button" data-lang-choice="en">EN</button>
+                <button type="button" data-lang-choice="th">ไทย</button>
+            </div>
+            <div class="room-badge"><span data-i18n="room">Room</span> {{ code }}</div>
         </div>
 
         <div class="mobile-content">
-            <div class="glass-panel mobile-controls">
-                <div class="section-title">Your Singer Name</div>
-                <input id="mobile_name" placeholder="Please enter your name" oninput="handleSingerNameChange()">
-                <div class="small muted top-gap">You must enter your name before adding a song.</div>
+            <div id="singerNamePanel" class="glass-panel mobile-controls singer-name-panel">
+                <div class="section-title" data-i18n="yourSingerName">Your Singer Name</div>
+                <input id="mobile_name" data-i18n-placeholder="namePlaceholder" placeholder="Please enter your name" oninput="handleSingerNameChange()">
+                <div class="small muted top-gap" data-i18n="nameHelp">You must enter your name before adding a song.</div>
+                <div id="namePrompt" class="name-prompt" data-i18n="namePrompt">Enter singer name first, then search for a song.</div>
 
-                <div class="button-grid top-gap">
-                    <button class="magic-btn green" onclick="playSong()">▶ Play</button>
-                    <button class="magic-btn orange" onclick="skipSong()">⏭ Skip</button>
-                    <button class="magic-btn blue" onclick="pauseSong()">⏸ Pause</button>
+                <div class="section-title top-gap" data-i18n="searchSong">Search Song</div>
+                <div class="search-mode-switch top-gap">
+                    <button type="button" class="active" data-search-mode="song" onclick="setSearchMode('song')" data-i18n="songMode">Song</button>
+                    <button type="button" data-search-mode="label" onclick="setSearchMode('label')" data-i18n="labelMode">Label</button>
+                    <button type="button" data-search-mode="style" onclick="setSearchMode('style')" data-i18n="styleMode">Style</button>
                 </div>
-
-                <div class="section-title top-gap">Search Song</div>
-                <input id="song_search" placeholder="Search song title or artist" oninput="handleSearchInput()">
+                <div id="songSearchRow" class="search-input-row">
+                    <input id="song_search" data-i18n-placeholder="searchPlaceholder" placeholder="Search song title or artist" onfocus="handleSearchFocus()" oninput="handleSearchInput()">
+                    <button type="button" class="clear-search-btn" onclick="clearSearch()" data-i18n="clear">Clear</button>
+                </div>
+                <div class="suggest-toggle-row">
+                    <label class="checkbox-wrapper-25 youke-toggle">
+                        <span data-i18n="recommendLabel">Recommend</span>
+                        <input id="recommendToggleInput" type="checkbox" onchange="toggleRecommendedSongs(this.checked)">
+                    </label>
+                    <label class="checkbox-wrapper-25 youke-toggle">
+                        <span data-i18n="autoSuggestLabel">Auto Suggest</span>
+                        <input id="autoSuggestToggleInput" type="checkbox" onchange="toggleAutoSuggest(this.checked)">
+                    </label>
+                </div>
                 <div id="msg" class="small muted top-gap"></div>
             </div>
 
             <div id="searchResults" class="mobile-queue"></div>
             <div id="currentBox" class="mobile-queue"></div>
+            <div class="reaction-collapsible glass-panel mobile-controls">
+                <button id="reactionToggleBtn" type="button" class="reaction-toggle-btn" onclick="toggleReactionComposer()" data-i18n="openReaction">Send Reaction</button>
+                <div id="reactionComposer" class="reaction-composer hidden">
+                    <div class="reaction-input-row">
+                        <input id="reaction_text" data-i18n-placeholder="reactionPlaceholder" placeholder="Type a short reaction" maxlength="80" onkeydown="handleReactionKey(event)">
+                        <button type="button" onclick="sendReaction()" data-i18n="sendReaction">Send</button>
+                    </div>
+                    <div class="small muted top-gap" data-i18n="reactionHelp">Less than 10 words.</div>
+                </div>
+            </div>
 
             <div class="glass-panel mobile-controls">
-                <div class="section-title">Up Next</div>
-                <div class="small muted drag-hint">Tap a song card for quick actions. Drag ☰ to reorder.</div>
+                <div class="section-title" data-i18n="upNext">Up Next</div>
+                <div class="small muted drag-hint" data-i18n="dragHintMobile">Tap a song card for quick actions. Drag the three lines to reorder.</div>
                 <div id="queueBox" class="mobile-queue"></div>
             </div>
         </div>
@@ -47,15 +74,249 @@
     <script>
         const ROOM_CODE = "{{ code }}";
         const SINGER_KEY = `youke_karaoke_singer_${ROOM_CODE}`;
+        const LANG_KEY = "youke_lang";
+        const AUTO_SUGGEST_KEY = `youke_auto_suggest_${ROOM_CODE}`;
+        const AUTO_SUGGEST_COUNT_KEY = `youke_auto_suggest_count_${ROOM_CODE}`;
+        const I18N = {
+            en: {
+                room: "Room",
+                yourSingerName: "Your Singer Name",
+                namePlaceholder: "Please enter your name",
+                nameHelp: "You must enter your name before adding a song.",
+                namePrompt: "Enter singer name first, then search for a song.",
+                play: "Play",
+                skip: "Skip",
+                pause: "Pause",
+                reactions: "Reactions",
+                reactionPlaceholder: "Type a short reaction",
+                sendReaction: "Send",
+                reactionHelp: "Less than 10 words.",
+                reactionSent: "Reaction sent",
+                reactionEmpty: "Type a reaction first",
+                reactionTooLong: "Reaction must be less than 10 words",
+                reactionWait: "Please wait before sending another reaction",
+                reactionBlocked: "Please keep reactions friendly",
+                reactionLinkBlocked: "Links are not allowed in reactions",
+                reactionSpam: "Please avoid sending the same reaction repeatedly",
+                searchSong: "Search Song",
+                searchPlaceholder: "Search song title or artist",
+                singerPlaceholder: "Search singer name",
+                labelPlaceholder: "Search label or music channel",
+                songMode: "Song",
+                singerMode: "Singer",
+                labelMode: "Label",
+                styleMode: "Style",
+                singerResult: "SINGER",
+                labelResult: "LABEL",
+                styleResult: "STYLE",
+                songsBySinger: "Songs by",
+                songsByLabel: "Songs from",
+                songsByStyle: "Style",
+                available: "available",
+                artistCount: "artists",
+                songCount: "songs",
+                backToSingers: "Back",
+                backToLabels: "Back",
+                backToStyles: "Back",
+                chooseLabel: "Choose a label",
+                chooseSingerBand: "Choose singer / band",
+                chooseStyle: "Choose a style",
+                noSingerBands: "No singers or bands found",
+                noStyles: "No styles found",
+                noSingers: "No singers found",
+                noLabels: "No labels found",
+                clear: "Clear",
+                upNext: "Up Next",
+                dragHintMobile: "Tap a song card for quick actions. Drag the three lines to reorder.",
+                searchFailed: "Search failed",
+                noSongs: "No songs found",
+                autoRefreshHint: "No result in the database yet. Ask YouKe to search YouTube and add matching VDOs.",
+                autoRefreshAction: "Search YouTube & add VDO",
+                autoRefreshRunning: "Searching YouTube and adding VDOs...",
+                autoRefreshDone: "Added VDOs. Results refreshed.",
+                autoRefreshNone: "No new VDO found yet.",
+                searchResult: "SEARCH RESULT",
+                popularSongs: "Popular Songs",
+                popularHint: "Top 5 from songs people selected in YouKe",
+                recommend: "Recommend Song",
+                recommendLabel: "Recommend",
+                recommendOn: "Recommend: On",
+                recommendOff: "Recommend: Off",
+                autoSuggestLabel: "Auto Suggest",
+                autoSuggestOn: "Auto Suggest: On",
+                autoSuggestOff: "Auto Suggest: Off",
+                autoSuggestShown: "Auto suggestions shown",
+                autoSuggestAdded: "Auto Suggest added a song",
+                openReaction: "Send Reaction",
+                hideReaction: "Hide Reaction",
+                add: "Add",
+                nameFirst: "Please enter your singer name first",
+                addFailed: "Add failed",
+                songAdded: "Song added",
+                singer: "Singer",
+                guest: "Guest",
+                nowPlaying: "NOW PLAYING",
+                noSongPlaying: "No song playing",
+                queueEmpty: "Queue empty",
+                next: "NEXT",
+                quickNext: "Next",
+                quickLast: "Last",
+                moveTo: "Move to...",
+                position: "Position",
+                playFailed: "Play failed",
+                pauseFailed: "Pause failed",
+                skipFailed: "Skip failed",
+                played: "Play command sent",
+                paused: "Paused",
+                skipped: "Skipped"
+            },
+            th: {
+                room: "ห้อง",
+                yourSingerName: "ชื่อนักร้อง",
+                namePlaceholder: "กรอกชื่อนักร้อง",
+                nameHelp: "ต้องกรอกชื่อก่อนเพิ่มเพลง",
+                namePrompt: "กรอกชื่อนักร้องก่อน แล้วค่อยค้นหาเพลง",
+                play: "เล่น",
+                skip: "ข้าม",
+                pause: "หยุดชั่วคราว",
+                reactions: "ส่งกำลังใจ",
+                reactionPlaceholder: "พิมพ์ข้อความสั้น ๆ",
+                sendReaction: "ส่ง",
+                reactionHelp: "ไม่เกิน 10 คำ",
+                reactionSent: "ส่ง reaction แล้ว",
+                reactionEmpty: "พิมพ์ข้อความก่อนส่ง",
+                reactionTooLong: "Reaction ต้องไม่เกิน 10 คำ",
+                reactionWait: "รอสักครู่ก่อนส่งอีกครั้ง",
+                reactionBlocked: "ขอข้อความสุภาพก่อนส่งขึ้นจอ",
+                reactionLinkBlocked: "Reaction ไม่อนุญาตให้ส่งลิงก์",
+                reactionSpam: "อย่าส่งข้อความซ้ำบ่อยเกินไป",
+                searchSong: "ค้นหาเพลง",
+                searchPlaceholder: "ค้นหาชื่อเพลงหรือศิลปิน",
+                singerPlaceholder: "ค้นหาชื่อนักร้อง",
+                labelPlaceholder: "ค้นหาค่ายเพลงหรือช่องเพลง",
+                songMode: "เพลง",
+                singerMode: "นักร้อง",
+                labelMode: "ค่ายเพลง",
+                styleMode: "สไตล์",
+                singerResult: "นักร้อง",
+                labelResult: "ค่ายเพลง",
+                styleResult: "สไตล์",
+                songsBySinger: "เพลงของ",
+                songsByLabel: "เพลงจาก",
+                songsByStyle: "สไตล์เพลง",
+                available: "รายการ",
+                artistCount: "ศิลปิน",
+                songCount: "เพลง",
+                backToSingers: "กลับ",
+                backToLabels: "กลับ",
+                backToStyles: "กลับ",
+                chooseLabel: "เลือกค่ายเพลง",
+                chooseSingerBand: "เลือกนักร้อง / วง",
+                chooseStyle: "เลือกสไตล์เพลง",
+                noSingerBands: "ไม่พบนักร้องหรือวง",
+                noStyles: "ไม่พบสไตล์เพลง",
+                noSingers: "ไม่พบนักร้อง",
+                noLabels: "ไม่พบค่ายเพลง",
+                clear: "ล้าง",
+                upNext: "คิวถัดไป",
+                dragHintMobile: "แตะการ์ดเพื่อดูคำสั่งลัด ลากที่ขีดสามเส้นเพื่อจัดคิว",
+                searchFailed: "ค้นหาไม่สำเร็จ",
+                noSongs: "ไม่พบเพลง",
+                autoRefreshHint: "No result in the database yet. Ask YouKe to search YouTube and add matching VDOs.",
+                autoRefreshAction: "Search YouTube & add VDO",
+                autoRefreshRunning: "Searching YouTube and adding VDOs...",
+                autoRefreshDone: "Added VDOs. Results refreshed.",
+                autoRefreshNone: "No new VDO found yet.",
+                searchResult: "ผลการค้นหา",
+                popularSongs: "เพลงแนะนำ",
+                popularHint: "Top 5 จากเพลงที่คนเลือกใน YouKe",
+                recommend: "แนะนำเพลง",
+                recommendLabel: "แนะนำเพลง",
+                recommendOn: "แนะนำเพลง: เปิด",
+                recommendOff: "แนะนำเพลง: ปิด",
+                autoSuggestLabel: "แนะนำอัตโนมัติ",
+                autoSuggestOn: "แนะนำอัตโนมัติ: เปิด",
+                autoSuggestOff: "แนะนำอัตโนมัติ: ปิด",
+                autoSuggestShown: "แสดงเพลงแนะนำอัตโนมัติแล้ว",
+                autoSuggestAdded: "Auto Suggest เพิ่มเพลงให้แล้ว",
+                openReaction: "ส่ง Reaction",
+                hideReaction: "ซ่อน Reaction",
+                add: "เพิ่ม",
+                nameFirst: "กรุณากรอกชื่อนักร้องก่อน",
+                addFailed: "เพิ่มเพลงไม่สำเร็จ",
+                songAdded: "เพิ่มเพลงแล้ว",
+                singer: "นักร้อง",
+                guest: "Guest",
+                nowPlaying: "กำลังเล่น",
+                noSongPlaying: "ยังไม่มีเพลงที่กำลังเล่น",
+                queueEmpty: "ยังไม่มีเพลงในคิว",
+                next: "คิว",
+                quickNext: "ถัดไป",
+                quickLast: "ท้ายคิว",
+                moveTo: "ย้ายไป...",
+                position: "ตำแหน่ง",
+                playFailed: "เล่นไม่สำเร็จ",
+                pauseFailed: "หยุดชั่วคราวไม่สำเร็จ",
+                skipFailed: "ข้ามไม่สำเร็จ",
+                played: "ส่งคำสั่งเล่นแล้ว",
+                paused: "หยุดชั่วคราวแล้ว",
+                skipped: "ข้ามแล้ว"
+            }
+        };
 
         let searchTimer = null;
         let selectedQueueItemId = null;
         let quickActionLockUntil = 0;
         let queueSortable = null;
+        let isDraggingQueue = false;
+        let searchMode = "song";
+        let selectedSinger = "";
+        let selectedLabel = "";
+        let selectedStyle = "";
+        let recommendEnabled = false;
+        let reactionComposerOpen = false;
+        let autoSuggestEnabled = localStorage.getItem(AUTO_SUGGEST_KEY) === "1";
+        let autoSuggestPending = false;
+        let autoRefreshPending = false;
+        let selectedSongCount = Number(localStorage.getItem(AUTO_SUGGEST_COUNT_KEY) || 0);
+
+        function getLang() {
+            return localStorage.getItem(LANG_KEY) || "en";
+        }
+
+        function t(key) {
+            return (I18N[getLang()] && I18N[getLang()][key]) || I18N.en[key] || key;
+        }
+
+        function applyLanguage() {
+            document.documentElement.lang = getLang();
+            document.querySelectorAll("[data-i18n]").forEach(el => {
+                el.textContent = t(el.dataset.i18n);
+            });
+            document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+                el.placeholder = t(el.dataset.i18nPlaceholder);
+            });
+            document.querySelectorAll("[data-lang-choice]").forEach(btn => {
+                btn.classList.toggle("active", btn.dataset.langChoice === getLang());
+            });
+            updateSearchPlaceholder();
+            updateRecommendToggleLabel();
+            updateAutoSuggestToggleLabel();
+            updateReactionToggleLabel();
+        }
+
+        document.querySelectorAll("[data-lang-choice]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                localStorage.setItem(LANG_KEY, btn.dataset.langChoice);
+                applyLanguage();
+                refreshState();
+            });
+        });
 
         function loadSingerName() {
             const saved = localStorage.getItem(SINGER_KEY) || "";
             document.getElementById("mobile_name").value = saved;
+            updateSingerPrompt();
         }
 
         function saveSingerName() {
@@ -65,6 +326,7 @@
             } else {
                 localStorage.removeItem(SINGER_KEY);
             }
+            updateSingerPrompt();
             return name;
         }
 
@@ -72,9 +334,83 @@
             saveSingerName();
         }
 
+        function updateSingerPrompt(force = false) {
+            const panel = document.getElementById("singerNamePanel");
+            const name = document.getElementById("mobile_name").value.trim();
+            panel.classList.toggle("needs-name", force || !name);
+        }
+
+        function promptSingerName() {
+            updateSingerPrompt(true);
+            document.getElementById("msg").textContent = t("nameFirst");
+            document.getElementById("mobile_name").focus();
+        }
+
+        function handleSearchFocus() {
+            if (!document.getElementById("mobile_name").value.trim()) {
+                promptSingerName();
+            }
+        }
+
         function handleSearchInput() {
+            if (!saveSingerName()) {
+                clearTimeout(searchTimer);
+                document.getElementById("searchResults").innerHTML = "";
+                promptSingerName();
+                return;
+            }
+            setRecommendEnabled(false);
             clearTimeout(searchTimer);
             searchTimer = setTimeout(runSearch, 300);
+        }
+
+        function setSearchMode(mode) {
+            setRecommendEnabled(false);
+            searchMode = mode;
+            selectedSinger = "";
+            selectedLabel = "";
+            selectedStyle = "";
+            clearTimeout(searchTimer);
+            document.querySelectorAll("[data-search-mode]").forEach(btn => {
+                btn.classList.toggle("active", btn.dataset.searchMode === mode);
+            });
+            document.getElementById("song_search").value = "";
+            document.getElementById("searchResults").innerHTML = "";
+            document.getElementById("msg").textContent = "";
+            document.getElementById("songSearchRow").classList.toggle("hidden", mode === "label" || mode === "style");
+            updateSearchPlaceholder();
+            if (mode === "label") {
+                loadLabels();
+            } else if (mode === "style") {
+                loadStyles();
+            } else {
+                document.getElementById("song_search").focus();
+            }
+        }
+
+        function updateSearchPlaceholder() {
+            const input = document.getElementById("song_search");
+            if (!input) return;
+            input.placeholder = t("searchPlaceholder");
+        }
+
+        function clearSearch() {
+            clearTimeout(searchTimer);
+            setRecommendEnabled(false);
+            const input = document.getElementById("song_search");
+            input.value = "";
+            selectedSinger = "";
+            selectedLabel = "";
+            selectedStyle = "";
+            document.getElementById("searchResults").innerHTML = "";
+            document.getElementById("msg").textContent = "";
+            if (searchMode === "label") {
+                loadLabels();
+            } else if (searchMode === "style") {
+                loadStyles();
+            } else {
+                input.focus();
+            }
         }
 
         function lockQuickActions(ms = 5000) {
@@ -94,35 +430,218 @@
                 return;
             }
 
-            const res = await fetch(`/api/song/search?q=${encodeURIComponent(q)}&limit=20`);
+            const url = `/api/song/search?q=${encodeURIComponent(q)}&limit=20`;
+            const res = await fetch(url);
             const data = await res.json();
 
             if (!res.ok) {
-                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || "Search failed")}</div>`;
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
                 return;
             }
 
             renderSearchResults(data.results || []);
         }
 
-        function renderSearchResults(results) {
+        async function loadRecommendedSongs() {
             const box = document.getElementById("searchResults");
+            const name = saveSingerName();
+            if (!name) {
+                setRecommendEnabled(false);
+                promptSingerName();
+                return;
+            }
+            searchMode = "song";
+            selectedSinger = "";
+            selectedLabel = "";
+            selectedStyle = "";
+            document.querySelectorAll("[data-search-mode]").forEach(btn => {
+                btn.classList.toggle("active", btn.dataset.searchMode === "song");
+            });
+            document.getElementById("songSearchRow").classList.remove("hidden");
+            document.getElementById("song_search").value = "";
+            setRecommendEnabled(true);
 
-            if (!results.length) {
-                box.innerHTML = `<div class="empty-box glass-panel">No songs found</div>`;
+            box.innerHTML = `<div class="empty-box glass-panel">${t("popularSongs")}</div>`;
+
+            const res = await fetch("/api/song/recommended?limit=5");
+            const data = await res.json();
+
+            if (!res.ok) {
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
                 return;
             }
 
-            box.innerHTML = results.map(song => `
+            renderRecommendedSongs(data.results || []);
+        }
+
+        function setRecommendEnabled(enabled) {
+            recommendEnabled = enabled;
+            updateRecommendToggleLabel();
+        }
+
+        function updateRecommendToggleLabel() {
+            const input = document.getElementById("recommendToggleInput");
+            if (!input) return;
+            input.checked = recommendEnabled;
+        }
+
+        function updateAutoSuggestToggleLabel() {
+            const input = document.getElementById("autoSuggestToggleInput");
+            if (!input) return;
+            input.checked = autoSuggestEnabled;
+        }
+
+        function toggleAutoSuggest(forceValue) {
+            autoSuggestEnabled = typeof forceValue === "boolean" ? forceValue : !autoSuggestEnabled;
+            localStorage.setItem(AUTO_SUGGEST_KEY, autoSuggestEnabled ? "1" : "0");
+            updateAutoSuggestToggleLabel();
+            fetch(`/api/rooms/${ROOM_CODE}/auto_suggest`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ enabled: autoSuggestEnabled })
+            }).catch(() => {});
+        }
+
+        async function toggleRecommendedSongs(forceValue) {
+            const shouldEnable = typeof forceValue === "boolean" ? forceValue : !recommendEnabled;
+            if (!shouldEnable) {
+                setRecommendEnabled(false);
+                document.getElementById("searchResults").innerHTML = "";
+                document.getElementById("song_search").focus();
+                return;
+            }
+            await loadRecommendedSongs();
+        }
+
+        function renderSingerResults(results) {
+            const box = document.getElementById("searchResults");
+
+            if (!results.length) {
+                box.innerHTML = `<div class="empty-box glass-panel">${t("noSingers")}</div>`;
+                return;
+            }
+
+            box.innerHTML = results.map(singer => `
+                <button type="button" class="singer-result-card sparkle-card" onclick="loadSingerSongs('${escapeJs(singer.name)}')">
+                    <div class="song-pill result-pill">${t("singerResult")}</div>
+                    <div class="singer-result-name">${escapeHtml(singer.name)}</div>
+                    <div class="singer-result-count">${Number(singer.songCount || 0)} ${t("songCount")}</div>
+                </button>
+            `).join("");
+        }
+
+        function renderLabelResults(results) {
+            const box = document.getElementById("searchResults");
+
+            if (!results.length) {
+                box.innerHTML = `<div class="empty-box glass-panel">${t("noLabels")}</div>`;
+                return;
+            }
+
+            box.innerHTML = `
+                ${renderBrowseHeader({
+                    eyebrow: t("labelMode"),
+                    title: t("chooseLabel"),
+                    meta: `${results.length} ${t("available")}`
+                })}
+                <div class="style-icon-grid">
+                    ${results.map(label => `
+                        <button type="button" class="label-logo-card" onclick="loadLabelSongs('${escapeJs(label.id || label.name)}', '${escapeJs(label.name)}')">
+                            ${
+                                label.logo
+                                    ? `<img src="${escapeHtml(label.logo)}" alt="${escapeHtml(label.name)}">`
+                                    : `<div class="label-other-mark">OTHER</div>`
+                            }
+                            <div class="label-logo-name">${escapeHtml(label.name)}</div>
+                            <div class="label-logo-count">${Number(label.songCount || 0)}</div>
+                        </button>
+                    `).join("")}
+                </div>
+            `;
+        }
+
+        async function loadStyles() {
+            const box = document.getElementById("searchResults");
+            box.innerHTML = `<div class="empty-box glass-panel">${t("chooseStyle")}</div>`;
+
+            const res = await fetch("/api/style/list");
+            const data = await res.json();
+
+            if (!res.ok) {
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
+                return;
+            }
+
+            renderStyleResults(data.results || []);
+        }
+
+        function renderStyleResults(results) {
+            const box = document.getElementById("searchResults");
+
+            if (!results.length) {
+                box.innerHTML = `<div class="empty-box glass-panel">${t("noStyles")}</div>`;
+                return;
+            }
+
+            box.innerHTML = `
+                ${renderBrowseHeader({
+                    eyebrow: t("styleMode"),
+                    title: t("chooseStyle"),
+                    meta: `${results.length} ${t("available")}`
+                })}
+                <div class="style-icon-grid">
+                    ${results.map(style => `
+                        <button type="button" class="style-icon-card style-${escapeHtml(style.id)}" onclick="loadStyleSongs('${escapeJs(style.id)}', '${escapeJs(style.name)}')">
+                            <div class="style-icon-mark">${getStyleIcon(style.id)}</div>
+                            <div class="style-icon-name">${escapeHtml(style.name)}</div>
+                        </button>
+                    `).join("")}
+                </div>
+            `;
+        }
+
+        function getStyleIcon(styleId) {
+            const icons = {
+                pop: "POP",
+                rock: "ROCK",
+                lukthung: "LT",
+                morlam: "ML",
+                dance: "DANCE",
+                indie: "IND",
+                ost: "OST",
+                "90s": "90s",
+                "2000s": "2K",
+                duet: "DUO",
+                heartbreak: "LOVE",
+                party: "FUN"
+            };
+            return icons[styleId] || "MUSIC";
+        }
+
+        function renderBrowseHeader({ eyebrow, title, meta = "", backLabel = "", backAction = "" }) {
+            return `
+                <div class="browse-header glass-panel ${backAction ? "" : "no-back"}">
+                    ${backAction ? `<button type="button" class="browse-back-btn" onclick="${backAction}">&larr; ${escapeHtml(backLabel || t("backToLabels"))}</button>` : ""}
+                    <div class="browse-heading">
+                        <div class="song-pill result-pill">${escapeHtml(eyebrow || "")}</div>
+                        <div class="browse-title">${escapeHtml(title || "")}</div>
+                        ${meta ? `<div class="browse-meta">${escapeHtml(meta)}</div>` : ""}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSongCards(results) {
+            return results.map(song => `
                 <div class="song-card sparkle-card result-card">
                     <img src="${escapeHtml(song.thumbnail)}" alt="thumbnail">
                     <div class="song-text">
-                        <div class="song-pill result-pill">SEARCH RESULT</div>
+                        <div class="song-pill result-pill">${t("searchResult")}</div>
                         <div class="song-title">${escapeHtml(song.title || song.videoId)}</div>
                         <div class="song-sub">${escapeHtml(song.channelName || "")}</div>
                         <div class="song-action-row">
                             <button class="magic-btn pink small-action-btn" onclick="addSongFromDb('${escapeJs(song.videoId)}')">
-                                Add
+                                ${t("add")}
                             </button>
                         </div>
                     </div>
@@ -130,13 +649,257 @@
             `).join("");
         }
 
+        function renderRecommendedSongs(results) {
+            const box = document.getElementById("searchResults");
+            const header = renderBrowseHeader({
+                eyebrow: t("searchSong"),
+                title: t("popularSongs"),
+                meta: t("popularHint")
+            });
+
+            if (!results.length) {
+                box.innerHTML = "";
+                return;
+            }
+
+            box.innerHTML = header + renderSongCards(results);
+        }
+
+        async function loadStyleSongs(styleId, styleName) {
+            selectedStyle = styleId;
+            const box = document.getElementById("searchResults");
+            box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(t("songsByStyle"))} ${escapeHtml(styleName)}</div>`;
+
+            const res = await fetch(`/api/style/songs?style=${encodeURIComponent(styleId)}&limit=30`);
+            const data = await res.json();
+
+            if (!res.ok) {
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
+                return;
+            }
+
+            renderStyleSongResults(styleName, data.results || []);
+        }
+
+        function renderStyleSongResults(styleName, results) {
+            const box = document.getElementById("searchResults");
+            const header = renderBrowseHeader({
+                eyebrow: t("songsByStyle"),
+                title: styleName,
+                meta: `${results.length} ${t("songCount")}`,
+                backLabel: t("backToStyles"),
+                backAction: "loadStyles()"
+            });
+
+            if (!results.length) {
+                box.innerHTML = `${header}<div class="empty-box glass-panel">${t("noSongs")}</div>`;
+                return;
+            }
+
+            box.innerHTML = header + renderSongCards(results);
+        }
+
+        async function loadLabels() {
+            const box = document.getElementById("searchResults");
+            box.innerHTML = `<div class="empty-box glass-panel">${t("chooseLabel")}</div>`;
+
+            const res = await fetch("/api/label/search?limit=50");
+            const data = await res.json();
+
+            if (!res.ok) {
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
+                return;
+            }
+
+            renderLabelResults(data.results || []);
+        }
+
+        async function loadSingerSongs(singerName) {
+            selectedSinger = singerName;
+            const box = document.getElementById("searchResults");
+            box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(t("songsBySinger"))} ${escapeHtml(singerName)}</div>`;
+
+            const res = await fetch(`/api/singer/songs?singer=${encodeURIComponent(singerName)}&limit=30`);
+            const data = await res.json();
+
+            if (!res.ok) {
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
+                return;
+            }
+
+            renderSingerSongResults(singerName, data.results || []);
+        }
+
+        function renderSingerSongResults(singerName, results) {
+            const box = document.getElementById("searchResults");
+            const header = renderBrowseHeader({
+                eyebrow: t("songsBySinger"),
+                title: singerName,
+                meta: `${results.length} ${t("songCount")}`,
+                backLabel: t("backToSingers"),
+                backAction: "runSearch()"
+            });
+
+            if (!results.length) {
+                box.innerHTML = `${header}<div class="empty-box glass-panel">${t("noSongs")}</div>`;
+                return;
+            }
+
+            box.innerHTML = header + renderSongCards(results);
+        }
+
+        async function loadLabelSongs(labelId, labelName = labelId) {
+            selectedLabel = labelId;
+            selectedSinger = "";
+            const box = document.getElementById("searchResults");
+            box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(t("chooseSingerBand"))}</div>`;
+
+            const res = await fetch(`/api/label/singers?label=${encodeURIComponent(labelId)}&limit=200`);
+            const data = await res.json();
+
+            if (!res.ok) {
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
+                return;
+            }
+
+            renderLabelSingerResults(labelId, labelName, data.results || []);
+        }
+
+        function renderLabelSingerResults(labelId, labelName, results) {
+            const box = document.getElementById("searchResults");
+            const header = renderBrowseHeader({
+                eyebrow: t("labelMode"),
+                title: labelName,
+                meta: `${results.length} ${t("artistCount")}`,
+                backLabel: t("backToLabels"),
+                backAction: "loadLabels()"
+            });
+
+            if (!results.length) {
+                box.innerHTML = `${header}<div class="empty-box glass-panel">${t("noSingerBands")}</div>`;
+                return;
+            }
+
+            box.innerHTML = header + results.map(singer => `
+                <button type="button" class="singer-result-card sparkle-card" onclick="loadLabelSingerSongs('${escapeJs(labelId)}', '${escapeJs(labelName)}', '${escapeJs(singer.name)}')">
+                    <div class="song-pill result-pill">${t("singerResult")}</div>
+                    <div class="singer-result-name">${escapeHtml(singer.name)}</div>
+                    <div class="singer-result-count">${Number(singer.songCount || 0)} ${t("songCount")}</div>
+                </button>
+            `).join("");
+        }
+
+        async function loadLabelSingerSongs(labelId, labelName, singerName) {
+            selectedLabel = labelId;
+            selectedSinger = singerName;
+            const box = document.getElementById("searchResults");
+            box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(t("songsBySinger"))} ${escapeHtml(singerName)}</div>`;
+
+            const res = await fetch(`/api/label/singer_songs?label=${encodeURIComponent(labelId)}&singer=${encodeURIComponent(singerName)}&limit=30`);
+            const data = await res.json();
+
+            if (!res.ok) {
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
+                return;
+            }
+
+            renderLabelSongResults(labelId, labelName, singerName, data.results || []);
+        }
+
+        function renderLabelSongResults(labelId, labelName, singerName, results) {
+            const box = document.getElementById("searchResults");
+            const header = renderBrowseHeader({
+                eyebrow: labelName,
+                title: singerName,
+                meta: `${results.length} ${t("songCount")}`,
+                backLabel: t("backToSingers"),
+                backAction: `loadLabelSongs('${escapeJs(labelId)}', '${escapeJs(labelName)}')`
+            });
+
+            if (!results.length) {
+                box.innerHTML = `${header}<div class="empty-box glass-panel">${t("noSongs")}</div>`;
+                return;
+            }
+
+            box.innerHTML = header + renderSongCards(results);
+        }
+
+        function renderSearchResults(results) {
+            const box = document.getElementById("searchResults");
+
+            if (!results.length) {
+                box.innerHTML = renderEmptySearchBox();
+                return;
+            }
+
+            box.innerHTML = renderSongCards(results);
+        }
+
+        function renderEmptySearchBox(message = "") {
+            const q = document.getElementById("song_search").value.trim();
+            const canRefresh = searchMode === "song" && q.length >= 2;
+
+            return `
+                <div class="empty-box glass-panel">
+                    <div>${escapeHtml(message || t("noSongs"))}</div>
+                    ${
+                        canRefresh
+                            ? `<div class="small muted top-gap">${escapeHtml(t("autoRefreshHint"))}</div>
+                               <button type="button" class="quick-action-btn top-gap" onclick="refreshMissingSongs('${escapeJs(q)}')" ${autoRefreshPending ? "disabled" : ""}>
+                                   ${escapeHtml(t("autoRefreshAction"))}
+                               </button>`
+                            : ``
+                    }
+                </div>
+            `;
+        }
+
+        async function refreshMissingSongs(query) {
+            if (autoRefreshPending) return;
+
+            const box = document.getElementById("searchResults");
+            const msg = document.getElementById("msg");
+            autoRefreshPending = true;
+            box.innerHTML = renderEmptySearchBox(t("autoRefreshRunning"));
+            msg.textContent = t("autoRefreshRunning");
+
+            try {
+                const res = await fetch("/api/song/refresh_missing", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ q: query })
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
+                    msg.textContent = data.error || t("searchFailed");
+                    return;
+                }
+
+                if ((data.results || []).length) {
+                    msg.textContent = data.foundCount > 0 ? t("autoRefreshDone") : t("autoRefreshNone");
+                    renderSearchResults(data.results || []);
+                    return;
+                }
+
+                msg.textContent = t("autoRefreshNone");
+                autoRefreshPending = false;
+                box.innerHTML = renderEmptySearchBox(t("autoRefreshNone"));
+            } catch (err) {
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(t("searchFailed"))}</div>`;
+                msg.textContent = t("searchFailed");
+            } finally {
+                autoRefreshPending = false;
+            }
+        }
+
         async function addSongFromDb(videoId) {
             const msg = document.getElementById("msg");
             const name = saveSingerName();
 
             if (!name) {
-                msg.textContent = "Please enter your singer name first";
-                document.getElementById("mobile_name").focus();
+                promptSingerName();
                 return;
             }
 
@@ -152,12 +915,98 @@
             const data = await res.json();
 
             if (!res.ok) {
-                msg.textContent = data.error || "Add failed";
+                msg.textContent = data.error || t("addFailed");
                 return;
             }
 
-            msg.textContent = data.message || "Song added";
+            msg.textContent = data.message || t("songAdded");
+            selectedSongCount += 1;
+            localStorage.setItem(AUTO_SUGGEST_COUNT_KEY, String(selectedSongCount));
             refreshState();
+        }
+
+        function reactionWordCount(value) {
+            return value.trim().split(/\s+/).filter(Boolean).length;
+        }
+
+        function reactionErrorMessage(data) {
+            const codeMap = {
+                reaction_empty: "reactionEmpty",
+                reaction_too_long: "reactionTooLong",
+                reaction_wait: "reactionWait",
+                reaction_blocked: "reactionBlocked",
+                reaction_link_blocked: "reactionLinkBlocked",
+                reaction_spam: "reactionSpam"
+            };
+            const key = codeMap[data && data.code];
+            return key ? t(key) : ((data && data.error) || t("reactionWait"));
+        }
+
+        function updateReactionToggleLabel() {
+            const btn = document.getElementById("reactionToggleBtn");
+            if (!btn) return;
+            btn.textContent = reactionComposerOpen ? t("hideReaction") : t("openReaction");
+        }
+
+        function toggleReactionComposer() {
+            reactionComposerOpen = !reactionComposerOpen;
+            const composer = document.getElementById("reactionComposer");
+            composer.classList.toggle("hidden", !reactionComposerOpen);
+            updateReactionToggleLabel();
+            if (reactionComposerOpen) {
+                document.getElementById("reaction_text").focus();
+            }
+        }
+
+        function handleReactionKey(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                sendReaction();
+            }
+        }
+
+        async function sendReaction() {
+            const msg = document.getElementById("msg");
+            const name = saveSingerName();
+
+            if (!name) {
+                promptSingerName();
+                return;
+            }
+
+            const input = document.getElementById("reaction_text");
+            const message = input.value.trim().replace(/\s+/g, " ");
+            if (!message) {
+                msg.textContent = t("reactionEmpty");
+                input.focus();
+                return;
+            }
+            if (reactionWordCount(message) > 10) {
+                msg.textContent = t("reactionTooLong");
+                input.focus();
+                return;
+            }
+
+            const res = await fetch(`/api/rooms/${ROOM_CODE}/reaction`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    requested_by: name,
+                    message
+                })
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                msg.textContent = reactionErrorMessage(data);
+                return;
+            }
+
+            input.value = "";
+            msg.textContent = t("reactionSent");
+            reactionComposerOpen = false;
+            document.getElementById("reactionComposer").classList.add("hidden");
+            updateReactionToggleLabel();
         }
 
         async function refreshState() {
@@ -165,12 +1014,37 @@
             const data = await res.json();
 
             renderCurrent(data.current);
+            maybeAutoSuggest(data);
 
-            if (isQuickActionsLocked()) {
+            if (isQuickActionsLocked() || isDraggingQueue) {
                 return;
             }
 
             renderQueue(data.queue || []);
+        }
+
+        async function maybeAutoSuggest(state) {
+            if (!autoSuggestEnabled || autoSuggestPending) return;
+            if (!state || !state.current) return;
+            if ((state.queue || []).length > 1) return;
+
+            autoSuggestPending = true;
+            try {
+                const res = await fetch(`/api/rooms/${ROOM_CODE}/auto_suggest`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ enabled: true })
+                });
+                const data = await res.json();
+                if (res.ok && data.added) {
+                    document.getElementById("msg").textContent = t("autoSuggestAdded");
+                    setTimeout(() => refreshState(), 250);
+                }
+            } catch (err) {
+                console.error("auto suggest failed", err);
+            } finally {
+                autoSuggestPending = false;
+            }
         }
 
         function renderCurrent(current) {
@@ -181,15 +1055,29 @@
                     <div class="song-card current-song sparkle-card">
                         <img src="${escapeHtml(current.thumbnail)}" alt="thumbnail">
                         <div class="song-text">
-                            <div class="song-pill now-pill">NOW PLAYING</div>
+                            <div class="song-pill now-pill">${t("nowPlaying")}</div>
                             <div class="song-title">${escapeHtml(current.title || current.videoId)}</div>
-                            <div class="song-sub">Singer : ${escapeHtml(current.requestedBy || "Guest")}</div>
+                            <div class="song-sub">${t("singer")} : ${escapeHtml(current.requestedBy || t("guest"))}</div>
                         </div>
                     </div>
+                    ${renderPlaybackControls()}
                 `;
             } else {
-                currentBox.innerHTML = `<div class="empty-box glass-panel">No song playing</div>`;
+                currentBox.innerHTML = `
+                    <div class="empty-box glass-panel">${t("noSongPlaying")}</div>
+                    ${renderPlaybackControls()}
+                `;
             }
+        }
+
+        function renderPlaybackControls() {
+            return `
+                <div class="playback-button-row">
+                    <button class="magic-btn green" onclick="playSong()">${t("play")}</button>
+                    <button class="magic-btn blue" onclick="pauseSong()">${t("pause")}</button>
+                    <button class="magic-btn orange" onclick="skipSong()">${t("skip")}</button>
+                </div>
+            `;
         }
 
         function renderQueue(queue) {
@@ -198,7 +1086,7 @@
             if (!queue.length) {
                 selectedQueueItemId = null;
                 destroySortable();
-                queueBox.innerHTML = `<div class="empty-box glass-panel">Queue empty</div>`;
+                queueBox.innerHTML = `<div class="empty-box glass-panel">${t("queueEmpty")}</div>`;
                 return;
             }
 
@@ -209,15 +1097,14 @@
 
             queueBox.innerHTML = queue.map((item, idx) => {
                 const isSelected = item.itemId === selectedQueueItemId;
-                const cardClasses = `song-card sparkle-card queue-item-draggable queue-item-card${isSelected ? " queue-item-selected" : ""}`;
+                const cardClasses = `queue-list-row queue-item-draggable queue-item-card${isSelected ? " queue-item-selected" : ""}`;
                 return `
                     <div class="${cardClasses}" data-item-id="${item.itemId}">
                         <div class="drag-handle" title="Drag to reorder" aria-label="Drag to reorder">☰</div>
-                        <img src="${escapeHtml(item.thumbnail)}" alt="thumbnail">
+                        <div class="queue-position">${t("next")} ${idx + 1}</div>
                         <div class="song-text">
-                            <div class="song-pill result-pill">NEXT ${idx + 1}</div>
                             <div class="song-title">${escapeHtml(item.title || item.videoId)}</div>
-                            <div class="song-sub">Singer : ${escapeHtml(item.requestedBy || "Guest")}</div>
+                            <div class="song-sub">${t("singer")} : ${escapeHtml(item.requestedBy || t("guest"))}</div>
                             ${isSelected ? renderQuickActions(item.itemId, idx, queue.length) : ""}
                         </div>
                     </div>
@@ -234,14 +1121,14 @@
 
             return `
                 <div class="quick-actions-row" onclick="event.stopPropagation()">
-                    <button class="quick-action-btn" onclick="moveQueueItem(${itemId}, 'next')">Next</button>
-                    <button class="quick-action-btn secondary" onclick="moveQueueItem(${itemId}, 'last')">Last</button>
+                    <button class="quick-action-btn" onclick="moveQueueItem(${itemId}, 'next')">${t("quickNext")}</button>
+                    <button class="quick-action-btn secondary" onclick="moveQueueItem(${itemId}, 'last')">${t("quickLast")}</button>
                     <button class="quick-action-btn secondary" onclick="deleteQueueItem(${itemId})">🗑</button>
                     ${
                         options.length
                             ? `<div class="quick-action-select-wrap">
                                     <select class="quick-action-select" onchange="handlePositionChange(${itemId}, this.value)">
-                                        <option value="">Move to...</option>
+                                        <option value="">${t("moveTo")}</option>
                                         ${options.map(opt => `<option value="${opt.targetIndex}">${opt.label}</option>`).join("")}
                                     </select>
                                </div>`
@@ -257,7 +1144,7 @@
                 const targetIndex = overallPos - 2;
                 if (targetIndex === queueIndex) continue;
                 options.push({
-                    label: `Position ${overallPos}`,
+                    label: `${t("position")} ${overallPos}`,
                     targetIndex
                 });
             }
@@ -272,7 +1159,7 @@
 
                 card.addEventListener("click", (event) => {
                     if (event.target.closest(".quick-actions-row")) return;
-                    if (event.target.closest(".drag-handle")) return;
+                    if (isDraggingQueue) return;
                     if (Date.now() < quickActionLockUntil) return;
                     selectedQueueItemId = (selectedQueueItemId === itemId) ? null : itemId;
                     renderQueueFromDomState();
@@ -323,7 +1210,18 @@
                 chosenClass: "sortable-chosen-card",
                 dragClass: "sortable-drag-card",
                 handle: ".drag-handle",
+                filter: ".quick-actions-row, .quick-action-btn, .quick-action-select",
+                preventOnFilter: false,
+                delayOnTouchOnly: true,
+                delay: 0,
+                touchStartThreshold: 2,
+                scroll: true,
+                scrollSensitivity: 64,
+                scrollSpeed: 12,
+                swapThreshold: 0.68,
                 onStart: () => {
+                    isDraggingQueue = true;
+                    document.body.classList.add("queue-drag-active");
                     lockQuickActions(10000);
                 },
                 onEnd: async () => {
@@ -332,8 +1230,14 @@
                     ).map(el => Number(el.dataset.itemId));
 
                     await sendReorder(orderedIds);
+                    isDraggingQueue = false;
+                    document.body.classList.remove("queue-drag-active");
                     quickActionLockUntil = 0;
                     refreshState();
+                },
+                onUnchoose: () => {
+                    isDraggingQueue = false;
+                    document.body.classList.remove("queue-drag-active");
                 }
             });
         }
@@ -416,8 +1320,7 @@
             const name = saveSingerName();
 
             if (!name) {
-                msg.textContent = "Please enter your singer name first";
-                document.getElementById("mobile_name").focus();
+                promptSingerName();
                 return;
             }
 
@@ -425,11 +1328,11 @@
             const data = await res.json();
 
             if (!res.ok) {
-                msg.textContent = data.error || "Play failed";
+                msg.textContent = data.error || t("playFailed");
                 return;
             }
 
-            msg.textContent = "Play command sent";
+            msg.textContent = t("played");
             refreshState();
         }
 
@@ -438,8 +1341,7 @@
             const name = saveSingerName();
 
             if (!name) {
-                msg.textContent = "Please enter your singer name first";
-                document.getElementById("mobile_name").focus();
+                promptSingerName();
                 return;
             }
 
@@ -447,11 +1349,11 @@
             const data = await res.json();
 
             if (!res.ok) {
-                msg.textContent = data.error || "Pause failed";
+                msg.textContent = data.error || t("pauseFailed");
                 return;
             }
 
-            msg.textContent = data.message || "Paused";
+            msg.textContent = data.message || t("paused");
             refreshState();
         }
 
@@ -460,8 +1362,7 @@
             const name = saveSingerName();
 
             if (!name) {
-                msg.textContent = "Please enter your singer name first";
-                document.getElementById("mobile_name").focus();
+                promptSingerName();
                 return;
             }
 
@@ -469,11 +1370,11 @@
             const data = await res.json();
 
             if (!res.ok) {
-                msg.textContent = data.error || "Skip failed";
+                msg.textContent = data.error || t("skipFailed");
                 return;
             }
 
-            msg.textContent = data.message || "Skipped";
+            msg.textContent = data.message || t("skipped");
             refreshState();
         }
 
@@ -490,7 +1391,11 @@
             return String(str).replaceAll("\\", "\\\\").replaceAll("'", "\\'");
         }
 
+        applyLanguage();
         loadSingerName();
+        if (!document.getElementById("mobile_name").value.trim()) {
+            setTimeout(() => promptSingerName(), 250);
+        }
         setInterval(refreshState, 1500);
         refreshState();
     </script>
