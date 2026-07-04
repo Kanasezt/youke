@@ -25,7 +25,7 @@
                 <div class="section-title" data-i18n="yourSingerName">Your Name</div>
                 <input id="mobile_name" data-i18n-placeholder="namePlaceholder" placeholder="Please enter your name" oninput="handleSingerNameChange()">
                 <div class="small muted top-gap" data-i18n="nameHelp">You must enter your name before adding a song.</div>
-                <div id="namePrompt" class="name-prompt" data-i18n="namePrompt">Enter singer name first, then search for a song.</div>
+                <div id="namePrompt" class="name-prompt" data-i18n="namePrompt">Enter your name first, then search for a song.</div>
 
                 <div class="section-title top-gap" data-i18n="searchSong">Search Song</div>
                 <div class="search-mode-switch top-gap">
@@ -77,13 +77,14 @@
         const LANG_KEY = "youke_lang";
         const AUTO_SUGGEST_KEY = `youke_auto_suggest_${ROOM_CODE}`;
         const AUTO_SUGGEST_COUNT_KEY = `youke_auto_suggest_count_${ROOM_CODE}`;
+        const ADDED_SONGS_KEY = `youke_added_songs_${ROOM_CODE}`;
         const I18N = {
             en: {
                 room: "Room",
                 yourSingerName: "Your Name",
-                namePlaceholder: "Please enter your name",
+                namePlaceholder: "Enter your name",
                 nameHelp: "You must enter your name before adding a song.",
-                namePrompt: "Enter singer name first, then search for a song.",
+                namePrompt: "Enter your name first, then search for a song.",
                 play: "Play",
                 skip: "Skip",
                 pause: "Pause",
@@ -130,11 +131,11 @@
                 dragHintMobile: "Tap a song card for quick actions. Drag the three lines to reorder.",
                 searchFailed: "Search failed",
                 noSongs: "No songs found",
-                autoRefreshHint: "No result in the database yet. Ask YouKe to search YouTube and add matching VDOs.",
-                autoRefreshAction: "Search YouTube & add VDO",
-                autoRefreshRunning: "Searching YouTube and adding VDOs...",
-                autoRefreshDone: "Added VDOs. Results refreshed.",
-                autoRefreshNone: "No new VDO found yet.",
+                autoRefreshHint: "ยังไม่พบผลลัพธ์ในฐานข้อมูล ให้ YouKe ค้นหา YouTube และเพิ่มวิดีโอที่ตรงกัน",
+                autoRefreshAction: "ค้นหาและเพิ่มจาก YouTube",
+                autoRefreshRunning: "กำลังค้นหาและเพิ่มวิดีโอจาก YouTube...",
+                autoRefreshDone: "เพิ่มวิดีโอและอัปเดตผลการค้นหาแล้ว",
+                autoRefreshNone: "ยังไม่พบวิดีโอใหม่",
                 searchResult: "SEARCH RESULT",
                 popularSongs: "Popular Songs",
                 popularHint: "Top 5 from songs people selected in YouKe",
@@ -150,7 +151,9 @@
                 openReaction: "Send Reaction",
                 hideReaction: "Hide Reaction",
                 add: "Add",
-                nameFirst: "Please enter Your Name first",
+                adding: "Adding...",
+                added: "Added",
+                nameFirst: "Please enter your name first",
                 addFailed: "Add failed",
                 songAdded: "Song added",
                 singer: "Singer",
@@ -172,10 +175,10 @@
             },
             th: {
                 room: "ห้อง",
-                yourSingerName: "ชื่อนักร้อง",
-                namePlaceholder: "กรอกชื่อนักร้อง",
-                nameHelp: "ต้องกรอกชื่อก่อนเพิ่มเพลง",
-                namePrompt: "กรอกชื่อนักร้องก่อน แล้วค่อยค้นหาเพลง",
+                yourSingerName: "ชื่อของคุณ",
+                namePlaceholder: "กรอกชื่อของคุณ",
+                nameHelp: "กรุณากรอกชื่อของคุณก่อนเพิ่มเพลง",
+                namePrompt: "กรอกชื่อของคุณก่อน แล้วค่อยค้นหาเพลง",
                 play: "เล่น",
                 skip: "ข้าม",
                 pause: "หยุดชั่วคราว",
@@ -183,12 +186,12 @@
                 reactionPlaceholder: "พิมพ์ข้อความสั้น ๆ",
                 sendReaction: "ส่ง",
                 reactionHelp: "ไม่เกิน 10 คำ",
-                reactionSent: "ส่ง reaction แล้ว",
+                reactionSent: "ส่งข้อความแล้ว",
                 reactionEmpty: "พิมพ์ข้อความก่อนส่ง",
-                reactionTooLong: "Reaction ต้องไม่เกิน 10 คำ",
+                reactionTooLong: "ข้อความต้องไม่เกิน 10 คำ",
                 reactionWait: "รอสักครู่ก่อนส่งอีกครั้ง",
                 reactionBlocked: "ขอข้อความสุภาพก่อนส่งขึ้นจอ",
-                reactionLinkBlocked: "Reaction ไม่อนุญาตให้ส่งลิงก์",
+                reactionLinkBlocked: "ไม่อนุญาตให้ส่งลิงก์",
                 reactionSpam: "อย่าส่งข้อความซ้ำบ่อยเกินไป",
                 searchSong: "ค้นหาเพลง",
                 searchPlaceholder: "ค้นหาชื่อเพลงหรือศิลปิน",
@@ -222,14 +225,14 @@
                 dragHintMobile: "แตะการ์ดเพื่อดูคำสั่งลัด ลากที่ขีดสามเส้นเพื่อจัดคิว",
                 searchFailed: "ค้นหาไม่สำเร็จ",
                 noSongs: "ไม่พบเพลง",
-                autoRefreshHint: "No result in the database yet. Ask YouKe to search YouTube and add matching VDOs.",
-                autoRefreshAction: "Search YouTube & add VDO",
-                autoRefreshRunning: "Searching YouTube and adding VDOs...",
-                autoRefreshDone: "Added VDOs. Results refreshed.",
-                autoRefreshNone: "No new VDO found yet.",
+                autoRefreshHint: "ยังไม่พบผลลัพธ์ในฐานข้อมูล ให้ YouKe ค้นหา YouTube และเพิ่มวิดีโอที่ตรงกัน",
+                autoRefreshAction: "ค้นหาและเพิ่มจาก YouTube",
+                autoRefreshRunning: "กำลังค้นหาและเพิ่มวิดีโอจาก YouTube...",
+                autoRefreshDone: "เพิ่มวิดีโอและอัปเดตผลการค้นหาแล้ว",
+                autoRefreshNone: "ยังไม่พบวิดีโอใหม่",
                 searchResult: "ผลการค้นหา",
                 popularSongs: "เพลงแนะนำ",
-                popularHint: "Top 5 จากเพลงที่คนเลือกใน YouKe",
+                popularHint: "5 อันดับเพลงที่มีคนเลือกใน YouKe",
                 recommend: "แนะนำเพลง",
                 recommendLabel: "แนะนำเพลง",
                 recommendOn: "แนะนำเพลง: เปิด",
@@ -238,15 +241,17 @@
                 autoSuggestOn: "แนะนำอัตโนมัติ: เปิด",
                 autoSuggestOff: "แนะนำอัตโนมัติ: ปิด",
                 autoSuggestShown: "แสดงเพลงแนะนำอัตโนมัติแล้ว",
-                autoSuggestAdded: "Auto Suggest เพิ่มเพลงให้แล้ว",
-                openReaction: "ส่ง Reaction",
-                hideReaction: "ซ่อน Reaction",
+                autoSuggestAdded: "ระบบแนะนำอัตโนมัติเพิ่มเพลงแล้ว",
+                openReaction: "ส่งข้อความ",
+                hideReaction: "ซ่อนข้อความ",
                 add: "เพิ่ม",
-                nameFirst: "กรุณากรอกชื่อนักร้องก่อน",
+                adding: "กำลังเพิ่ม...",
+                added: "เพิ่มแล้ว",
+                nameFirst: "กรุณากรอกชื่อของคุณก่อน",
                 addFailed: "เพิ่มเพลงไม่สำเร็จ",
                 songAdded: "เพิ่มเพลงแล้ว",
                 singer: "นักร้อง",
-                guest: "Guest",
+                guest: "ผู้ใช้",
                 nowPlaying: "กำลังเล่น",
                 noSongPlaying: "ยังไม่มีเพลงที่กำลังเล่น",
                 queueEmpty: "ยังไม่มีเพลงในคิว",
@@ -279,6 +284,7 @@
         let autoSuggestPending = false;
         let autoRefreshPending = false;
         let selectedSongCount = Number(localStorage.getItem(AUTO_SUGGEST_COUNT_KEY) || 0);
+        let addedSongIds = loadAddedSongIds();
 
         function getLang() {
             return localStorage.getItem(LANG_KEY) || "en";
@@ -303,15 +309,39 @@
             updateRecommendToggleLabel();
             updateAutoSuggestToggleLabel();
             updateReactionToggleLabel();
+            updateAddSongButtonLabels();
         }
 
         document.querySelectorAll("[data-lang-choice]").forEach(btn => {
             btn.addEventListener("click", () => {
                 localStorage.setItem(LANG_KEY, btn.dataset.langChoice);
                 applyLanguage();
+                refreshLocalizedSearchView();
                 refreshState();
             });
         });
+
+        function refreshLocalizedSearchView() {
+            const input = document.getElementById("song_search");
+            if (recommendEnabled) {
+                loadRecommendedSongs();
+                return;
+            }
+            if (searchMode === "label") {
+                selectedLabel = "";
+                selectedSinger = "";
+                loadLabels();
+                return;
+            }
+            if (searchMode === "style") {
+                selectedStyle = "";
+                loadStyles();
+                return;
+            }
+            if (input && input.value.trim()) {
+                runSearch();
+            }
+        }
 
         function loadSingerName() {
             const saved = localStorage.getItem(SINGER_KEY) || "";
@@ -435,7 +465,7 @@
             const data = await res.json();
 
             if (!res.ok) {
-                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(t("searchFailed"))}</div>`;
                 return;
             }
 
@@ -467,7 +497,7 @@
             const data = await res.json();
 
             if (!res.ok) {
-                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(t("searchFailed"))}</div>`;
                 return;
             }
 
@@ -568,7 +598,7 @@
             const data = await res.json();
 
             if (!res.ok) {
-                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(t("searchFailed"))}</div>`;
                 return;
             }
 
@@ -632,23 +662,30 @@
         }
 
         function renderSongCards(results) {
-            return results.map(song => `
-                <div class="song-card sparkle-card result-card">
-                    <img src="${escapeHtml(song.thumbnail)}" alt="thumbnail">
-                    <div class="song-text">
-                        <div class="song-pill result-pill">${t("searchResult")}</div>
-                        <div class="song-title">${escapeHtml(song.title || song.videoId)}</div>
-                        <div class="song-sub">${escapeHtml(song.channelName || "")}</div>
-                        <div class="song-action-row">
-                            <button class="magic-btn pink small-action-btn" onclick="addSongFromDb('${escapeJs(song.videoId)}')">
-                                ${t("add")}
-                            </button>
+            return results.map(song => {
+                const videoId = String(song.videoId || "");
+                const isAdded = addedSongIds.has(videoId);
+                return `
+                    <div class="song-card sparkle-card result-card">
+                        <img src="${escapeHtml(song.thumbnail)}" alt="thumbnail">
+                        <div class="song-text">
+                            <div class="song-pill result-pill">${t("searchResult")}</div>
+                            <div class="song-title">${escapeHtml(song.title || song.videoId)}</div>
+                            <div class="song-sub">${escapeHtml(song.channelName || "")}</div>
+                            <div class="song-action-row">
+                                <button
+                                    type="button"
+                                    class="magic-btn pink small-action-btn${isAdded ? " is-added" : ""}"
+                                    data-add-video-id="${escapeHtml(videoId)}"
+                                    onclick="addSongFromDb('${escapeJs(videoId)}')"
+                                    ${isAdded ? "disabled" : ""}
+                                >${t(isAdded ? "added" : "add")}</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `).join("");
+                `;
+            }).join("");
         }
-
         function renderRecommendedSongs(results) {
             const box = document.getElementById("searchResults");
             const header = renderBrowseHeader({
@@ -674,7 +711,7 @@
             const data = await res.json();
 
             if (!res.ok) {
-                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(t("searchFailed"))}</div>`;
                 return;
             }
 
@@ -707,7 +744,7 @@
             const data = await res.json();
 
             if (!res.ok) {
-                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(t("searchFailed"))}</div>`;
                 return;
             }
 
@@ -723,7 +760,7 @@
             const data = await res.json();
 
             if (!res.ok) {
-                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(t("searchFailed"))}</div>`;
                 return;
             }
 
@@ -758,7 +795,7 @@
             const data = await res.json();
 
             if (!res.ok) {
-                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(t("searchFailed"))}</div>`;
                 return;
             }
 
@@ -799,7 +836,7 @@
             const data = await res.json();
 
             if (!res.ok) {
-                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
+                box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(t("searchFailed"))}</div>`;
                 return;
             }
 
@@ -872,8 +909,8 @@
                 const data = await res.json();
 
                 if (!res.ok) {
-                    box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(data.error || t("searchFailed"))}</div>`;
-                    msg.textContent = data.error || t("searchFailed");
+                    box.innerHTML = `<div class="empty-box glass-panel">${escapeHtml(t("searchFailed"))}</div>`;
+                    msg.textContent = t("searchFailed");
                     return;
                 }
 
@@ -894,7 +931,52 @@
             }
         }
 
+        function loadAddedSongIds() {
+            try {
+                return new Set(JSON.parse(sessionStorage.getItem(ADDED_SONGS_KEY) || "[]"));
+            } catch (err) {
+                return new Set();
+            }
+        }
+
+        function saveAddedSongIds() {
+            sessionStorage.setItem(ADDED_SONGS_KEY, JSON.stringify(Array.from(addedSongIds)));
+        }
+
+        function updateAddSongButtonLabels() {
+            document.querySelectorAll("[data-add-video-id]").forEach(btn => {
+                const isAdded = addedSongIds.has(btn.dataset.addVideoId);
+                const isAdding = btn.classList.contains("is-adding");
+                btn.classList.toggle("is-added", isAdded);
+                btn.disabled = isAdded || isAdding;
+                btn.textContent = t(isAdded ? "added" : (isAdding ? "adding" : "add"));
+            });
+        }
+
+        function setAddSongPending(videoId, pending) {
+            document.querySelectorAll("[data-add-video-id]").forEach(btn => {
+                if (btn.dataset.addVideoId === videoId) {
+                    btn.classList.toggle("is-adding", pending);
+                }
+            });
+            updateAddSongButtonLabels();
+        }
+
+        function markSongAdded(videoId) {
+            addedSongIds.add(videoId);
+            document.querySelectorAll("[data-add-video-id]").forEach(btn => {
+                if (btn.dataset.addVideoId === videoId) {
+                    btn.classList.remove("is-adding");
+                }
+            });
+            saveAddedSongIds();
+            updateAddSongButtonLabels();
+        }
+
         async function addSongFromDb(videoId) {
+            videoId = String(videoId || "");
+            if (!videoId || addedSongIds.has(videoId)) return;
+
             const msg = document.getElementById("msg");
             const name = saveSingerName();
 
@@ -903,28 +985,35 @@
                 return;
             }
 
-            const res = await fetch(`/api/rooms/${ROOM_CODE}/add`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    video_id: videoId,
-                    requested_by: name
-                })
-            });
+            setAddSongPending(videoId, true);
 
-            const data = await res.json();
+            try {
+                const res = await fetch(`/api/rooms/${ROOM_CODE}/add`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        video_id: videoId,
+                        requested_by: name
+                    })
+                });
+                await res.json();
 
-            if (!res.ok) {
-                msg.textContent = data.error || t("addFailed");
-                return;
+                if (!res.ok) {
+                    msg.textContent = t("addFailed");
+                    setAddSongPending(videoId, false);
+                    return;
+                }
+
+                markSongAdded(videoId);
+                msg.textContent = t("songAdded");
+                selectedSongCount += 1;
+                localStorage.setItem(AUTO_SUGGEST_COUNT_KEY, String(selectedSongCount));
+                refreshState();
+            } catch (err) {
+                msg.textContent = t("addFailed");
+                setAddSongPending(videoId, false);
             }
-
-            msg.textContent = data.message || t("songAdded");
-            selectedSongCount += 1;
-            localStorage.setItem(AUTO_SUGGEST_COUNT_KEY, String(selectedSongCount));
-            refreshState();
         }
-
         function reactionWordCount(value) {
             return value.trim().split(/\s+/).filter(Boolean).length;
         }
@@ -939,7 +1028,7 @@
                 reaction_spam: "reactionSpam"
             };
             const key = codeMap[data && data.code];
-            return key ? t(key) : ((data && data.error) || t("reactionWait"));
+            return key ? t(key) : t("reactionWait");
         }
 
         function updateReactionToggleLabel() {
@@ -1328,7 +1417,7 @@
             const data = await res.json();
 
             if (!res.ok) {
-                msg.textContent = data.error || t("playFailed");
+                msg.textContent = t("playFailed");
                 return;
             }
 
@@ -1349,11 +1438,11 @@
             const data = await res.json();
 
             if (!res.ok) {
-                msg.textContent = data.error || t("pauseFailed");
+                msg.textContent = t("pauseFailed");
                 return;
             }
 
-            msg.textContent = data.message || t("paused");
+            msg.textContent = t("paused");
             refreshState();
         }
 
@@ -1370,11 +1459,11 @@
             const data = await res.json();
 
             if (!res.ok) {
-                msg.textContent = data.error || t("skipFailed");
+                msg.textContent = t("skipFailed");
                 return;
             }
 
-            msg.textContent = data.message || t("skipped");
+            msg.textContent = t("skipped");
             refreshState();
         }
 
