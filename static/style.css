@@ -1479,10 +1479,24 @@ hr {
 }
 
 .small-action-btn {
+    min-width: 82px;
     padding: 10px 14px;
     font-size: 14px;
 }
 
+.small-action-btn.is-adding:disabled {
+    opacity: 0.72;
+}
+
+.small-action-btn.is-added,
+.small-action-btn.is-added:disabled {
+    cursor: default;
+    opacity: 1;
+    color: #102018;
+    background: linear-gradient(135deg, #a7f3d0, #34d399);
+    box-shadow: 0 8px 18px rgba(52, 211, 153, 0.22);
+    filter: none;
+}
 .empty-box {
     padding: 18px;
     text-align: center;
