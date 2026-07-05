@@ -1504,6 +1504,91 @@ hr {
     color: var(--text-soft);
 }
 
+.vdo-search-active {
+    border-color: rgba(255, 208, 142, 0.30);
+    color: #fff6ea;
+}
+
+.vdo-search-progress {
+    width: min(300px, 100%);
+    margin: 16px auto 2px;
+}
+
+.vdo-search-progress-track {
+    position: relative;
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.34);
+}
+
+.vdo-search-progress-bar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 42%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #ff9f43, #ffd27a, #7df0b8);
+    box-shadow: 0 0 14px rgba(255,159,67,0.36);
+    animation: vdoSearchSweep 1.25s ease-in-out infinite;
+}
+
+.vdo-search-progress-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 11px;
+}
+
+.vdo-search-progress-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--orange-soft);
+    animation: vdoSearchDot 1.05s ease-in-out infinite;
+}
+
+.vdo-search-progress-dots span:nth-child(2) {
+    animation-delay: 0.14s;
+}
+
+.vdo-search-progress-dots span:nth-child(3) {
+    animation-delay: 0.28s;
+}
+
+@keyframes vdoSearchSweep {
+    0% {
+        transform: translateX(-110%);
+    }
+    55% {
+        transform: translateX(138%);
+    }
+    100% {
+        transform: translateX(250%);
+    }
+}
+
+@keyframes vdoSearchDot {
+    0%, 70%, 100% {
+        opacity: 0.32;
+        transform: translateY(0);
+    }
+    35% {
+        opacity: 1;
+        transform: translateY(-3px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vdo-search-progress-bar {
+        animation-duration: 2.5s;
+    }
+
+    .vdo-search-progress-dots span {
+        animation: none;
+        opacity: 0.72;
+    }
+}
 .draggable-song {
     cursor: pointer;
     transition:
