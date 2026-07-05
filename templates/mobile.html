@@ -23,7 +23,7 @@
         <div class="mobile-content">
             <div id="singerNamePanel" class="glass-panel mobile-controls singer-name-panel">
                 <div class="section-title" data-i18n="yourSingerName">Your Name</div>
-                <input id="mobile_name" data-i18n-placeholder="namePlaceholder" placeholder="Please enter your name" oninput="handleSingerNameChange()">
+                <input id="mobile_name" data-i18n-placeholder="namePlaceholder" placeholder="Enter your name" oninput="handleSingerNameChange()">
                 <div class="small muted top-gap" data-i18n="nameHelp">You must enter your name before adding a song.</div>
                 <div id="namePrompt" class="name-prompt" data-i18n="namePrompt">Enter your name first, then search for a song.</div>
 
@@ -126,16 +126,19 @@
                 noStyles: "No styles found",
                 noSingers: "No singers found",
                 noLabels: "No labels found",
+                otherLabel: "OTHER",
+                dragReorder: "Drag to reorder",
                 clear: "Clear",
                 upNext: "Up Next",
                 dragHintMobile: "Tap a song card for quick actions. Drag the three lines to reorder.",
                 searchFailed: "Search failed",
                 noSongs: "No songs found",
-                autoRefreshHint: "ยังไม่พบผลลัพธ์ในฐานข้อมูล ให้ YouKe ค้นหา YouTube และเพิ่มวิดีโอที่ตรงกัน",
-                autoRefreshAction: "ค้นหาและเพิ่มจาก YouTube",
-                autoRefreshRunning: "กำลังค้นหาและเพิ่มวิดีโอจาก YouTube...",
-                autoRefreshDone: "เพิ่มวิดีโอและอัปเดตผลการค้นหาแล้ว",
-                autoRefreshNone: "ยังไม่พบวิดีโอใหม่",
+                autoRefreshHint: "No result in the database yet. Ask YouKe to search YouTube and add matching videos.",
+                autoRefreshAction: "Search YouTube & add video",
+                autoRefreshRunning: "Searching YouTube and adding videos...",
+                autoRefreshProgressLabel: "Searching YouTube",
+                autoRefreshDone: "Videos added. Results refreshed.",
+                autoRefreshNone: "No new video found yet.",
                 searchResult: "SEARCH RESULT",
                 popularSongs: "Popular Songs",
                 popularHint: "Top 5 from songs people selected in YouKe",
@@ -220,6 +223,8 @@
                 noStyles: "ไม่พบสไตล์เพลง",
                 noSingers: "ไม่พบนักร้อง",
                 noLabels: "ไม่พบค่ายเพลง",
+                otherLabel: "อื่น ๆ",
+                dragReorder: "ลากเพื่อจัดลำดับ",
                 clear: "ล้าง",
                 upNext: "คิวถัดไป",
                 dragHintMobile: "แตะการ์ดเพื่อดูคำสั่งลัด ลากที่ขีดสามเส้นเพื่อจัดคิว",
@@ -228,6 +233,7 @@
                 autoRefreshHint: "ยังไม่พบผลลัพธ์ในฐานข้อมูล ให้ YouKe ค้นหา YouTube และเพิ่มวิดีโอที่ตรงกัน",
                 autoRefreshAction: "ค้นหาและเพิ่มจาก YouTube",
                 autoRefreshRunning: "กำลังค้นหาและเพิ่มวิดีโอจาก YouTube...",
+                autoRefreshProgressLabel: "กำลังค้นหา YouTube",
                 autoRefreshDone: "เพิ่มวิดีโอและอัปเดตผลการค้นหาแล้ว",
                 autoRefreshNone: "ยังไม่พบวิดีโอใหม่",
                 searchResult: "ผลการค้นหา",
@@ -580,7 +586,7 @@
                             ${
                                 label.logo
                                     ? `<img src="${escapeHtml(label.logo)}" alt="${escapeHtml(label.name)}">`
-                                    : `<div class="label-other-mark">OTHER</div>`
+                                    : `<div class="label-other-mark">${escapeHtml(t("otherLabel"))}</div>`
                             }
                             <div class="label-logo-name">${escapeHtml(label.name)}</div>
                             <div class="label-logo-count">${Number(label.songCount || 0)}</div>
@@ -872,25 +878,39 @@
             box.innerHTML = renderSongCards(results);
         }
 
-        function renderEmptySearchBox(message = "") {
-            const q = document.getElementById("song_search").value.trim();
-            const canRefresh = searchMode === "song" && q.length >= 2;
-
+        function renderVdoSearchProgress() {
+            const label = escapeHtml(t("autoRefreshProgressLabel"));
             return `
-                <div class="empty-box glass-panel">
-                    <div>${escapeHtml(message || t("noSongs"))}</div>
-                    ${
-                        canRefresh
-                            ? `<div class="small muted top-gap">${escapeHtml(t("autoRefreshHint"))}</div>
-                               <button type="button" class="quick-action-btn top-gap" onclick="refreshMissingSongs('${escapeJs(q)}')" ${autoRefreshPending ? "disabled" : ""}>
-                                   ${escapeHtml(t("autoRefreshAction"))}
-                               </button>`
-                            : ``
-                    }
+                <div class="vdo-search-progress" role="progressbar" aria-label="${label}" aria-valuetext="${label}">
+                    <div class="vdo-search-progress-track" aria-hidden="true">
+                        <div class="vdo-search-progress-bar"></div>
+                    </div>
+                    <div class="vdo-search-progress-dots" aria-hidden="true">
+                        <span></span><span></span><span></span>
+                    </div>
                 </div>
             `;
         }
 
+        function renderEmptySearchBox(message = "") {
+            const q = document.getElementById("song_search").value.trim();
+            const canRefresh = searchMode === "song" && q.length >= 2;
+            const actionContent = autoRefreshPending
+                ? renderVdoSearchProgress()
+                : canRefresh
+                    ? `<div class="small muted top-gap">${escapeHtml(t("autoRefreshHint"))}</div>
+                       <button type="button" class="quick-action-btn top-gap" onclick="refreshMissingSongs('${escapeJs(q)}')">
+                           ${escapeHtml(t("autoRefreshAction"))}
+                       </button>`
+                    : "";
+
+            return `
+                <div class="empty-box glass-panel${autoRefreshPending ? " vdo-search-active" : ""}">
+                    <div>${escapeHtml(message || t("noSongs"))}</div>
+                    ${actionContent}
+                </div>
+            `;
+        }
         async function refreshMissingSongs(query) {
             if (autoRefreshPending) return;
 
@@ -1189,7 +1209,7 @@
                 const cardClasses = `queue-list-row queue-item-draggable queue-item-card${isSelected ? " queue-item-selected" : ""}`;
                 return `
                     <div class="${cardClasses}" data-item-id="${item.itemId}">
-                        <div class="drag-handle" title="Drag to reorder" aria-label="Drag to reorder">☰</div>
+                        <div class="drag-handle" title="${escapeHtml(t("dragReorder"))}" aria-label="${escapeHtml(t("dragReorder"))}">☰</div>
                         <div class="queue-position">${t("next")} ${idx + 1}</div>
                         <div class="song-text">
                             <div class="song-title">${escapeHtml(item.title || item.videoId)}</div>
