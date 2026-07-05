@@ -29,8 +29,8 @@
                     <div id="playerOverlay" class="overlay-message hidden"></div>
                     <div id="youtubeFallbackOverlay" class="youtube-fallback-overlay hidden">
                         <div class="youtube-fallback-card">
-                            <div class="youtube-fallback-pill">YouTube playback</div>
-                            <div class="youtube-fallback-title">This video cannot play inside YouKe.</div>
+                            <div class="youtube-fallback-pill" data-i18n="youtubePlayback">YouTube playback</div>
+                            <div class="youtube-fallback-title" data-i18n="embedUnavailableTitle">This video cannot play inside YouKe.</div>
                             <div id="youtubeFallbackReason" class="youtube-fallback-copy">
                                 The video owner may not allow iframe playback. Play it in YouTube instead.
                             </div>
@@ -38,14 +38,14 @@
                                 Auto skip in 30 seconds.
                             </div>
                             <div class="youtube-fallback-actions">
-                                <button type="button" class="youtube-fallback-btn primary" onclick="openCurrentVideoInYoutube()">Open in YouTube</button>
-                                <button type="button" class="youtube-fallback-btn" onclick="manualSkip()">Skip</button>
+                                <button type="button" class="youtube-fallback-btn primary" onclick="openCurrentVideoInYoutube()" data-i18n="openInYoutube">Open in YouTube</button>
+                                <button type="button" class="youtube-fallback-btn" onclick="manualSkip()" data-i18n="skip">Skip</button>
                             </div>
                         </div>
                     </div>
                     <div id="reactionOverlay" class="reaction-overlay"></div>
                     <div id="songAddToast" class="song-add-toast hidden">
-                        <div class="song-add-toast-label">Added to queue</div>
+                        <div class="song-add-toast-label" data-i18n="addedToQueue">Added to queue</div>
                         <div id="songAddToastText" class="song-add-toast-text"></div>
                     </div>
 
@@ -127,7 +127,21 @@
                 miniNow: "Now",
                 miniNext: "Next",
                 noSinger: "No singer",
-                noNextSong: "No next song"
+                noNextSong: "No next song",
+                youtubePlayback: "YouTube playback",
+                embedUnavailableTitle: "This video cannot play inside YouKe.",
+                embedInitialReason: "The video owner may not allow embedded playback. Open it in YouTube instead.",
+                autoSkipCountdown: "Auto skip in {seconds} seconds.",
+                openInYoutube: "Open in YouTube",
+                addedToQueue: "Added to queue",
+                addedSongToast: '{singer} added "{title}"',
+                embedOwnerBlocked: "The video owner blocks embedded playback. Open it in YouTube to play in a new window.",
+                embedUnavailableDirect: "YouTube says this video is unavailable here. Open it in YouTube to check directly.",
+                embedGeneric: "YouTube cannot play this video inside the embedded player. Open it in YouTube to play directly.",
+                exitFullscreen: "Exit Fullscreen",
+                loadingSong: "Loading YouKe song...",
+                autoplayBlocked: "Autoplay blocked. Click Play once on the computer screen.",
+                dragReorder: "Drag to reorder"
             },
             th: {
                 room: "ห้อง",
@@ -141,7 +155,7 @@
                 dragHintComputer: "แตะการ์ดเพื่อดูคำสั่งลัด ลากที่ขีดสามเส้นเพื่อจัดคิว",
                 nowPlaying: "กำลังเล่น",
                 singer: "นักร้อง",
-                guest: "Guest",
+                guest: "ผู้ใช้",
                 noSongPlaying: "ยังไม่มีเพลงที่กำลังเล่น",
                 queueEmpty: "ยังไม่มีเพลงในคิว",
                 next: "คิว",
@@ -155,7 +169,21 @@
                 miniNow: "ตอนนี้",
                 miniNext: "ถัดไป",
                 noSinger: "ยังไม่มีนักร้อง",
-                noNextSong: "ยังไม่มีเพลงถัดไป"
+                noNextSong: "ยังไม่มีเพลงถัดไป",
+                youtubePlayback: "การเล่นผ่าน YouTube",
+                embedUnavailableTitle: "วิดีโอนี้ไม่สามารถเล่นภายใน YouKe",
+                embedInitialReason: "เจ้าของวิดีโออาจไม่อนุญาตให้เล่นแบบฝัง ให้เปิดใน YouTube แทน",
+                autoSkipCountdown: "ข้ามอัตโนมัติในอีก {seconds} วินาที",
+                openInYoutube: "เปิดใน YouTube",
+                addedToQueue: "เพิ่มเข้าคิวแล้ว",
+                addedSongToast: '{singer} เพิ่มเพลง "{title}"',
+                embedOwnerBlocked: "เจ้าของวิดีโอไม่อนุญาตให้เล่นแบบฝัง แตะเปิดใน YouTube เพื่อเล่นในหน้าต่างใหม่",
+                embedUnavailableDirect: "YouTube แจ้งว่าวิดีโอนี้ไม่พร้อมใช้งานที่นี่ แตะเปิดใน YouTube เพื่อตรวจสอบโดยตรง",
+                embedGeneric: "YouTube ไม่สามารถเล่นวิดีโอนี้ในเครื่องเล่นแบบฝัง แตะเปิดใน YouTube เพื่อเปิดโดยตรง",
+                exitFullscreen: "ออกจากเต็มจอ",
+                loadingSong: "กำลังโหลดเพลง YouKe...",
+                autoplayBlocked: "เบราว์เซอร์บล็อกการเล่นอัตโนมัติ คลิกเล่นหนึ่งครั้งบนหน้าจอคอมพิวเตอร์",
+                dragReorder: "ลากเพื่อจัดลำดับ"
             }
         };
 
@@ -174,6 +202,7 @@
         let reactionDrainOffset = 0;
         let youtubeFallbackTimer = null;
         let youtubeFallbackVideoId = null;
+        let youtubeFallbackErrorCode = null;
         let youtubeFallbackSecondsLeft = 30;
         let knownSongItemIds = new Set();
         let hasInitializedKnownSongs = false;
@@ -205,6 +234,13 @@
             if (skipBtn) skipBtn.textContent = t("skip");
             if (pauseBtn) pauseBtn.textContent = t("pause");
             if (fullBtn) fullBtn.textContent = t("fullscreen");
+
+            const fullscreenFab = document.getElementById("fullscreenBtn");
+            if (fullscreenFab) {
+                fullscreenFab.title = document.fullscreenElement ? t("exitFullscreen") : t("fullscreen");
+            }
+            updateYoutubeFallbackCountdown();
+            updateYoutubeFallbackCopy();
         }
 
         document.querySelectorAll("[data-lang-choice]").forEach(btn => {
@@ -252,9 +288,23 @@
         function updateYoutubeFallbackCountdown() {
             const countdown = document.getElementById("youtubeFallbackCountdown");
             if (!countdown) return;
-            countdown.textContent = `Auto skip in ${youtubeFallbackSecondsLeft} second${youtubeFallbackSecondsLeft === 1 ? "" : "s"}.`;
+            countdown.textContent = t("autoSkipCountdown").replace("{seconds}", String(youtubeFallbackSecondsLeft));
         }
 
+        function updateYoutubeFallbackCopy() {
+            const reason = document.getElementById("youtubeFallbackReason");
+            if (!reason) return;
+
+            if (youtubeFallbackErrorCode === 101 || youtubeFallbackErrorCode === 150) {
+                reason.textContent = t("embedOwnerBlocked");
+            } else if (youtubeFallbackErrorCode === 100) {
+                reason.textContent = t("embedUnavailableDirect");
+            } else if (youtubeFallbackErrorCode !== null) {
+                reason.textContent = t("embedGeneric");
+            } else {
+                reason.textContent = t("embedInitialReason");
+            }
+        }
         function startYoutubeFallbackCountdown() {
             clearYoutubeFallbackTimer();
             youtubeFallbackVideoId = currentVideoId;
@@ -276,23 +326,14 @@
 
         function showYoutubeFallback(errorCode) {
             const fallback = document.getElementById("youtubeFallbackOverlay");
-            const reason = document.getElementById("youtubeFallbackReason");
-            if (!fallback || !reason) return;
+            if (!fallback) return;
 
             setOverlay("", false);
-
-            if (errorCode === 101 || errorCode === 150) {
-                reason.textContent = "The video owner blocks embedded playback. Tap Play in YouTube to open it in a new window.";
-            } else if (errorCode === 100) {
-                reason.textContent = "YouTube says this video is unavailable here. Tap Play in YouTube to check it directly.";
-            } else {
-                reason.textContent = "YouTube cannot play this video inside the embedded player. Tap Play in YouTube to open it directly.";
-            }
-
+            youtubeFallbackErrorCode = errorCode;
+            updateYoutubeFallbackCopy();
             fallback.classList.remove("hidden");
             startYoutubeFallbackCountdown();
         }
-
         function openCurrentVideoInYoutube() {
             clearYoutubeFallbackTimer();
             const popupWidth = window.screen && window.screen.availWidth ? window.screen.availWidth : 1280;
@@ -320,6 +361,8 @@
 
         function hideYoutubeFallback() {
             clearYoutubeFallbackTimer();
+            youtubeFallbackErrorCode = null;
+            updateYoutubeFallbackCopy();
             const fallback = document.getElementById("youtubeFallbackOverlay");
             if (fallback) fallback.classList.add("hidden");
         }
@@ -342,10 +385,10 @@
             const btn = document.getElementById("fullscreenBtn");
             if (document.fullscreenElement) {
                 btn.textContent = "⤫";
-                btn.title = "Exit Fullscreen";
+                btn.title = t("exitFullscreen");
             } else {
                 btn.textContent = "⛶";
-                btn.title = "Fullscreen";
+                btn.title = t("fullscreen");
             }
         });
 
@@ -429,7 +472,7 @@
                 currentIsPlaying = shouldPlay;
 
                 hideYoutubeFallback();
-                setOverlay("Loading YouKe song...", true);
+                setOverlay(t("loadingSong"), true);
 
                 try {
                     player.loadVideoById(current.videoId);
@@ -452,7 +495,7 @@
                 setTimeout(() => {
                     try {
                         if (shouldPlay && player.getPlayerState() !== YT.PlayerState.PLAYING) {
-                            setOverlay("Autoplay blocked. Click Play once on computer screen.", true);
+                            setOverlay(t("autoplayBlocked"), true);
                         }
                     } catch (err) {
                         console.error(err);
@@ -513,7 +556,7 @@
 
             const singer = item.requestedBy || t("guest");
             const title = shortSongName(item.title || item.videoId || "");
-            text.textContent = `${singer} added "${title}"`;
+            text.textContent = t("addedSongToast").replace("{singer}", singer).replace("{title}", title);
 
             clearTimeout(songAddToastTimer);
             toast.classList.remove("hidden");
@@ -662,7 +705,7 @@
                 const cardClasses = `song-card sparkle-card computer-queue-card queue-item-card${isSelected ? " queue-item-selected" : ""}`;
                 return `
                     <div class="${cardClasses}" data-item-id="${item.itemId}">
-                        <div class="drag-handle" title="Drag to reorder" aria-label="Drag to reorder">☰</div>
+                        <div class="drag-handle" title="${escapeHtml(t("dragReorder"))}" aria-label="${escapeHtml(t("dragReorder"))}">☰</div>
                         <img src="${escapeHtml(item.thumbnail)}" alt="thumbnail">
                         <div class="song-text">
                             <div class="song-pill result-pill">${t("next")} ${idx + 1}</div>
