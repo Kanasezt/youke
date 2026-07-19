@@ -27,15 +27,11 @@
                 <div class="small muted top-gap" data-i18n="nameHelp">You must enter your name before adding a song.</div>
                 <div id="namePrompt" class="name-prompt" data-i18n="namePrompt">Enter your name first, then search for a song.</div>
 
-                <div class="section-title top-gap" data-i18n="searchSong">Search Song</div>
-                <div class="search-mode-switch top-gap">
-                    <button type="button" class="active" data-search-mode="song" onclick="setSearchMode('song')" data-i18n="songMode">Song</button>
-                    <button type="button" data-search-mode="label" onclick="setSearchMode('label')" data-i18n="labelMode">Label</button>
-                    <button type="button" data-search-mode="style" onclick="setSearchMode('style')" data-i18n="styleMode">Style</button>
-                </div>
-                <div id="songSearchRow" class="search-input-row">
-                    <input id="song_search" data-i18n-placeholder="searchPlaceholder" placeholder="Search song title or artist" onfocus="handleSearchFocus()" oninput="handleSearchInput()">
-                    <button type="button" class="clear-search-btn" onclick="clearSearch()" data-i18n="clear">Clear</button>
+                <div class="song-search-focus">
+                    <div id="songSearchRow" class="search-input-row">
+                        <input id="song_search" data-i18n-placeholder="searchPlaceholder" placeholder="Search song title or artist" onfocus="handleSearchFocus()" oninput="handleSearchInput()">
+                        <button type="button" class="clear-search-btn" onclick="clearSearch()" data-i18n="clear">Clear</button>
+                    </div>
                 </div>
                 <div class="suggest-toggle-row">
                     <label class="checkbox-wrapper-25 youke-toggle">
@@ -77,7 +73,6 @@
         const LANG_KEY = "youke_lang";
         const AUTO_SUGGEST_KEY = `youke_auto_suggest_${ROOM_CODE}`;
         const AUTO_SUGGEST_COUNT_KEY = `youke_auto_suggest_count_${ROOM_CODE}`;
-        const ADDED_SONGS_KEY = `youke_added_songs_${ROOM_CODE}`;
         const I18N = {
             en: {
                 room: "Room",
@@ -290,7 +285,7 @@
         let autoSuggestPending = false;
         let autoRefreshPending = false;
         let selectedSongCount = Number(localStorage.getItem(AUTO_SUGGEST_COUNT_KEY) || 0);
-        let addedSongIds = loadAddedSongIds();
+        let addedSongIds = new Set();
 
         function getLang() {
             return localStorage.getItem(LANG_KEY) || "en";
@@ -401,6 +396,9 @@
         }
 
         function setSearchMode(mode) {
+            if (mode === "label") {
+                mode = "song";
+            }
             setRecommendEnabled(false);
             searchMode = mode;
             selectedSinger = "";
@@ -499,7 +497,9 @@
 
             box.innerHTML = `<div class="empty-box glass-panel">${t("popularSongs")}</div>`;
 
-            const res = await fetch("/api/song/recommended?limit=5");
+            const localeParams = new URLSearchParams(getClientLocalePreference());
+            localeParams.set("limit", "5");
+            const res = await fetch(`/api/song/recommended?${localeParams.toString()}`);
             const data = await res.json();
 
             if (!res.ok) {
@@ -527,6 +527,16 @@
             input.checked = autoSuggestEnabled;
         }
 
+        function getClientLocalePreference() {
+            const locale = navigator.language || (navigator.languages && navigator.languages[0]) || getLang();
+            const parts = String(locale || "").split("-");
+            return {
+                locale: String(locale || ""),
+                language: (parts[0] || getLang() || "").toLowerCase(),
+                country: (parts[1] || "").toUpperCase()
+            };
+        }
+
         function toggleAutoSuggest(forceValue) {
             autoSuggestEnabled = typeof forceValue === "boolean" ? forceValue : !autoSuggestEnabled;
             localStorage.setItem(AUTO_SUGGEST_KEY, autoSuggestEnabled ? "1" : "0");
@@ -534,7 +544,7 @@
             fetch(`/api/rooms/${ROOM_CODE}/auto_suggest`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ enabled: autoSuggestEnabled })
+                body: JSON.stringify({ enabled: autoSuggestEnabled, ...getClientLocalePreference() })
             }).catch(() => {});
         }
 
@@ -951,16 +961,18 @@
             }
         }
 
-        function loadAddedSongIds() {
-            try {
-                return new Set(JSON.parse(sessionStorage.getItem(ADDED_SONGS_KEY) || "[]"));
-            } catch (err) {
-                return new Set();
+        function syncActiveSongIds(current, queue) {
+            const activeIds = new Set();
+            if (current && current.videoId) {
+                activeIds.add(String(current.videoId));
             }
-        }
-
-        function saveAddedSongIds() {
-            sessionStorage.setItem(ADDED_SONGS_KEY, JSON.stringify(Array.from(addedSongIds)));
+            (queue || []).forEach(item => {
+                if (item && item.videoId) {
+                    activeIds.add(String(item.videoId));
+                }
+            });
+            addedSongIds = activeIds;
+            updateAddSongButtonLabels();
         }
 
         function updateAddSongButtonLabels() {
@@ -989,7 +1001,6 @@
                     btn.classList.remove("is-adding");
                 }
             });
-            saveAddedSongIds();
             updateAddSongButtonLabels();
         }
 
@@ -1122,6 +1133,7 @@
             const res = await fetch(`/api/rooms/${ROOM_CODE}/state`);
             const data = await res.json();
 
+            syncActiveSongIds(data.current, data.queue || []);
             renderCurrent(data.current);
             maybeAutoSuggest(data);
 
@@ -1142,7 +1154,7 @@
                 const res = await fetch(`/api/rooms/${ROOM_CODE}/auto_suggest`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ enabled: true })
+                    body: JSON.stringify({ enabled: true, ...getClientLocalePreference() })
                 });
                 const data = await res.json();
                 if (res.ok && data.added) {
