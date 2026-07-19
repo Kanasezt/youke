@@ -686,12 +686,68 @@ def discover_and_save_songs_for_query(query: str) -> int:
     return saved
 
 
-def get_recommended_songs(limit: int = 5) -> list[dict]:
+def normalize_locale_token(value: str | None) -> str:
+    return re.sub(r'[^a-z0-9]+', '', (value or '').casefold())
+
+
+def locale_preferences(country: str | None = '', language: str | None = '', locale: str | None = '') -> tuple[set[str], set[str]]:
+    raw_values = [country or '', language or '', locale or '']
+    locale_text = ' '.join(raw_values).casefold()
+    country_tokens = {normalize_locale_token(value) for value in raw_values if value}
+    language_tokens = {normalize_locale_token(value) for value in raw_values if value}
+    aliases = {
+        'th': ({'th', 'tha', 'thai', 'thailand'}, {'th', 'tha', 'thai'}),
+        'en': ({'us', 'usa', 'unitedstates', 'gb', 'uk', 'au', 'ca'}, {'en', 'eng', 'english'}),
+        'ja': ({'jp', 'jpn', 'japan'}, {'ja', 'jpn', 'japanese'}),
+        'ko': ({'kr', 'kor', 'korea', 'southkorea'}, {'ko', 'kor', 'korean'}),
+        'zh': ({'cn', 'chn', 'china', 'tw', 'taiwan', 'hk', 'hongkong'}, {'zh', 'zho', 'chi', 'chinese', 'mandarin', 'cantonese'}),
+    }
+    for prefix, (country_aliases, language_aliases) in aliases.items():
+        if any(token.startswith(prefix) for token in country_tokens | language_tokens) or prefix in locale_text:
+            country_tokens.update(country_aliases)
+            language_tokens.update(language_aliases)
+    country_tokens.discard('')
+    language_tokens.discard('')
+    return country_tokens, language_tokens
+
+
+def song_locale_score(song: dict, preferred_countries: set[str], preferred_languages: set[str]) -> int:
+    country = normalize_locale_token(song.get('country') or '')
+    language = normalize_locale_token(song.get('language') or '')
+    score = 0
+    if country and country in preferred_countries:
+        score += 260
+    if language and language in preferred_languages:
+        score += 220
+    return score
+
+
+def get_song_locale_map(video_ids: list[str]) -> dict[str, dict]:
+    if not db_ready() or not video_ids:
+        return {}
+    placeholder = sql_placeholder()
+    placeholders = ', '.join([placeholder for _ in video_ids])
+    with db_connect() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            f"""
+            SELECT video_id, country, language
+            FROM karaoke_songs
+            WHERE video_id IN ({placeholders})
+            """,
+            video_ids,
+        )
+        rows = cur.fetchall()
+    return {row[0]: {'country': row[1] or '', 'language': row[2] or ''} for row in rows}
+
+
+def get_recommended_songs(limit: int = 5, country: str = '', language: str = '', locale: str = '') -> list[dict]:
     if not db_ready():
         return []
 
     placeholder = sql_placeholder()
     op = like_operator()
+    preferred_countries, preferred_languages = locale_preferences(country, language, locale)
 
     stats_sql = f"""
         SELECT
@@ -728,6 +784,8 @@ def get_recommended_songs(limit: int = 5) -> list[dict]:
                     "thumbnail": row[3] or get_thumbnail(row[0]),
                     "score": row[4] or 0,
                     "requestCount": row[5] or 0,
+                    "country": "",
+                    "language": "",
                 }
             )
 
@@ -749,7 +807,7 @@ def get_recommended_songs(limit: int = 5) -> list[dict]:
             "%welovekamikaze%",
         ]
         fallback_sql = f"""
-            SELECT video_id, title, channel_name, thumbnail, score
+            SELECT video_id, title, channel_name, thumbnail, score, country, language
             FROM karaoke_songs
             WHERE embed_ok = 1
               AND video_id NOT IN (SELECT video_id FROM failed_videos)
@@ -775,7 +833,22 @@ def get_recommended_songs(limit: int = 5) -> list[dict]:
                 "thumbnail": row[3] or get_thumbnail(row[0]),
                 "score": row[4] or 0,
                 "requestCount": 0,
+                "country": row[5] or "",
+                "language": row[6] or "",
             }
+        )
+
+    if preferred_countries or preferred_languages:
+        locale_map = get_song_locale_map([song["videoId"] for song in results])
+        for song in results:
+            song.update(locale_map.get(song["videoId"], {}))
+        results.sort(
+            key=lambda song: (
+                -song_locale_score(song, preferred_countries, preferred_languages),
+                -int(song.get("requestCount") or 0),
+                -float(song.get("score") or 0),
+                song.get("title") or "",
+            )
         )
 
     return results[:limit]
@@ -1536,7 +1609,15 @@ def rank_auto_suggest_candidates(
     current_channel = compact_channel_key((room.get("current") or {}).get("channelName", ""))
 
     ranked = []
+    preferred_countries, preferred_languages = locale_preferences(
+        room.get("preferred_country") or "",
+        room.get("preferred_language") or "",
+        room.get("preferred_locale") or "",
+    )
+    locale_map = get_song_locale_map([song["videoId"] for song in candidates])
+
     for song in candidates:
+        song.update(locale_map.get(song["videoId"], {}))
         score = float(song.get("score") or 0)
         request_count = request_counts.get(song["videoId"], 0)
         song_singers = singer_keys_for_song(song)
@@ -1544,10 +1625,9 @@ def rank_auto_suggest_candidates(
 
         if song_style_match(song, style_id):
             score += 900
-        if song_label_match(song, label_id):
-            score += 700
         if seed_singer_keys and song_singers.intersection(seed_singer_keys):
-            score += 180
+            score += 260
+        score += song_locale_score(song, preferred_countries, preferred_languages)
         if request_count:
             score += min(request_count, 25) * 12
         if channel_key and current_channel and channel_key == current_channel:
@@ -1583,28 +1663,13 @@ def choose_auto_suggest_song(room: dict) -> tuple[dict | None, str | None]:
     else:
         style_id = room.get("auto_suggest_style_id")
 
-    seed_labels = room.get("user_selected_label_ids", [])[:3]
-    if len(seed_labels) >= 3:
-        label_counts = Counter(seed_labels)
-        label_id = max(
-            label_counts,
-            key=lambda item: (label_counts[item], -seed_labels.index(item)),
-        )
-        room["auto_suggest_label_id"] = label_id
-    else:
-        label_id = room.get("auto_suggest_label_id")
+    label_id = None
 
     if not style_id:
         style_id = infer_style_id_from_song(room.get("current"))
 
     candidates: list[dict] = []
-    if style_id and label_id:
-        candidates = [
-            song for song in search_style_label_songs(style_id, label_id, limit=80)
-            if song.get("videoId") not in excluded
-        ]
-
-    if not candidates and style_id:
+    if style_id:
         candidates = [
             song for song in search_style_songs(style_id, limit=80)
             if song.get("videoId") not in excluded
@@ -1612,7 +1677,12 @@ def choose_auto_suggest_song(room: dict) -> tuple[dict | None, str | None]:
 
     if not candidates:
         candidates = [
-            song for song in get_recommended_songs(limit=10)
+            song for song in get_recommended_songs(
+                limit=10,
+                country=room.get("preferred_country") or "",
+                language=room.get("preferred_language") or "",
+                locale=room.get("preferred_locale") or "",
+            )
             if song.get("videoId") not in excluded
         ]
         style_id = style_id or "popular"
@@ -1704,6 +1774,9 @@ def create_room():
         "auto_suggest_singer_keys": [],
         "user_selected_count": 0,
         "auto_suggest_label_id": None,
+        "preferred_country": "",
+        "preferred_language": "",
+        "preferred_locale": "",
         "used_video_ids": [],
         "created_at": created_at,
         "last_seen_at": created_at,
@@ -1832,8 +1905,12 @@ def api_song_recommended():
     except ValueError:
         limit = 5
 
+    country = (request.args.get("country") or "")[:40]
+    language = (request.args.get("language") or "")[:40]
+    locale = (request.args.get("locale") or "")[:40]
+
     try:
-        results = get_recommended_songs(limit=limit)
+        results = get_recommended_songs(limit=limit, country=country, language=language, locale=locale)
         return jsonify({"results": results})
     except Exception as e:
         print(f"RECOMMENDED SONGS ERROR: {e}")
@@ -2077,7 +2154,6 @@ def api_add_song(code: str):
     remember_room_video(room, selected_song["videoId"])
     room["user_selected_count"] = room.get("user_selected_count", 0) + 1
     remember_user_selected_style(room, selected_song)
-    remember_user_selected_label(room, selected_song)
     remember_user_selected_singers(room, selected_song)
 
     if room["current"] is None:
@@ -2120,6 +2196,9 @@ def api_auto_suggest_song(code: str):
     room.setdefault("auto_suggest_singer_keys", [])
     room.setdefault("user_selected_count", len(room.get("user_selected_style_ids", [])))
     room.setdefault("used_video_ids", [])
+    room["preferred_country"] = (data.get("country") or room.get("preferred_country") or "")[:40]
+    room["preferred_language"] = (data.get("language") or room.get("preferred_language") or "")[:40]
+    room["preferred_locale"] = (data.get("locale") or room.get("preferred_locale") or "")[:40]
     room["auto_suggest_enabled"] = enabled
     if not enabled:
         return jsonify({"success": True, "enabled": False, "added": False})
@@ -2195,7 +2274,6 @@ def api_auto_suggest_song(code: str):
             "added": True,
             "item": item,
             "style": get_style_preset(style_id) if style_id and style_id != "popular" else None,
-            "label": get_label_preset(room.get("auto_suggest_label_id") or ""),
             "queue_count": len(room["queue"]),
         }
     )
