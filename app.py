@@ -28,6 +28,8 @@ SQLITE_DB_PATH = Path(
 )
 AUTO_REFRESH_SEARCH_LIMIT = int(os.environ.get("AUTO_REFRESH_SEARCH_LIMIT", "6"))
 AUTO_REFRESH_SAVE_LIMIT = int(os.environ.get("AUTO_REFRESH_SAVE_LIMIT", "12"))
+AUTO_SUGGEST_QUEUE_TARGET = max(1, int(os.environ.get("AUTO_SUGGEST_QUEUE_TARGET", "3")))
+AUTO_SUGGEST_PICK_POOL = max(1, int(os.environ.get("AUTO_SUGGEST_PICK_POOL", "12")))
 AUTO_REFRESH_PATTERNS = [
     "{query} karaoke",
     "{query} official karaoke",
@@ -62,6 +64,8 @@ STYLE_TITLE_BLOCKLIST = [
     r"\bteaser\b",
     r"\btrailer\b",
     r"\bcover\b",
+    r"\blyrics?\b",
+    r"\bjingle\b",
     r"\bsetup\b",
     r"\bconfiguration\b",
     r"\btutorial\b",
@@ -1563,17 +1567,29 @@ def get_song_request_counts(video_ids: list[str]) -> dict[str, int]:
     return {row[0]: int(row[1] or 0) for row in rows}
 
 
-def recent_auto_singer_keys(room: dict, lookback: int = 2) -> set[str]:
-    keys: set[str] = set()
+def recent_auto_items(room: dict, lookback: int = 2) -> list[dict]:
     recent_items = [
         item for item in room.get("queue", [])[-lookback:]
         if item.get("autoSuggested")
     ]
     if room.get("current") and room["current"].get("autoSuggested"):
         recent_items.append(room["current"])
-    for item in recent_items:
+    return recent_items
+
+
+def recent_auto_singer_keys(room: dict, lookback: int = 2) -> set[str]:
+    keys: set[str] = set()
+    for item in recent_auto_items(room, lookback):
         keys.update(singer_keys_for_song(item))
     return keys
+
+
+def recent_auto_channel_keys(room: dict, lookback: int = 2) -> set[str]:
+    return {
+        compact_channel_key(item.get("channelName") or "")
+        for item in recent_auto_items(room, lookback)
+        if compact_channel_key(item.get("channelName") or "")
+    }
 
 
 def auto_singer_usage_counts(room: dict) -> Counter:
@@ -1605,6 +1621,7 @@ def rank_auto_suggest_candidates(
     request_counts = get_song_request_counts([song["videoId"] for song in candidates])
     seed_singer_keys = set(room.get("user_selected_singer_keys", []))
     recent_singers = recent_auto_singer_keys(room)
+    recent_channels = recent_auto_channel_keys(room)
     auto_usage = auto_singer_usage_counts(room)
     current_channel = compact_channel_key((room.get("current") or {}).get("channelName", ""))
 
@@ -1632,6 +1649,8 @@ def rank_auto_suggest_candidates(
             score += min(request_count, 25) * 12
         if channel_key and current_channel and channel_key == current_channel:
             score += 70
+        if channel_key and channel_key in recent_channels:
+            score -= 260
 
         if recent_singers and song_singers.intersection(recent_singers):
             score -= 900
@@ -1648,6 +1667,40 @@ def rank_auto_suggest_candidates(
 
     ranked.sort(key=lambda item: (-item[0], -item[1], item[2].get("title") or ""))
     return [song for _, _, song in ranked]
+
+
+def is_auto_suggest_candidate(song: dict) -> bool:
+    return is_clean_style_song(
+        str(song.get("title") or ""),
+        str(song.get("channelName") or ""),
+        str(song.get("sourceName") or ""),
+    )
+
+
+def pick_auto_suggest_song(room: dict, ranked: list[dict]) -> dict | None:
+    if not ranked:
+        return None
+
+    pool_size = min(AUTO_SUGGEST_PICK_POOL, len(ranked))
+    top_pool = ranked[:pool_size]
+    used_auto_singers = auto_singer_key_set(room)
+    recent_channels = recent_auto_channel_keys(room, lookback=3)
+
+    fresh_singer_pool = [
+        song for song in top_pool
+        if singer_keys_for_song(song) and not singer_keys_for_song(song).intersection(used_auto_singers)
+    ]
+    if fresh_singer_pool:
+        top_pool = fresh_singer_pool
+
+    fresh_channel_pool = [
+        song for song in top_pool
+        if compact_channel_key(song.get("channelName") or "") not in recent_channels
+    ]
+    if fresh_channel_pool:
+        top_pool = fresh_channel_pool
+
+    return random.choice(top_pool)
 
 
 def choose_auto_suggest_song(room: dict) -> tuple[dict | None, str | None]:
@@ -1672,18 +1725,18 @@ def choose_auto_suggest_song(room: dict) -> tuple[dict | None, str | None]:
     if style_id:
         candidates = [
             song for song in search_style_songs(style_id, limit=80)
-            if song.get("videoId") not in excluded
+            if song.get("videoId") not in excluded and is_auto_suggest_candidate(song)
         ]
 
     if not candidates:
         candidates = [
             song for song in get_recommended_songs(
-                limit=10,
+                limit=40,
                 country=room.get("preferred_country") or "",
                 language=room.get("preferred_language") or "",
                 locale=room.get("preferred_locale") or "",
             )
-            if song.get("videoId") not in excluded
+            if song.get("videoId") not in excluded and is_auto_suggest_candidate(song)
         ]
         style_id = style_id or "popular"
 
@@ -1691,15 +1744,7 @@ def choose_auto_suggest_song(room: dict) -> tuple[dict | None, str | None]:
         return None, style_id
 
     ranked = rank_auto_suggest_candidates(room, candidates, style_id, label_id)
-    used_auto_singers = auto_singer_key_set(room)
-    diverse_ranked = [
-        song for song in ranked
-        if singer_keys_for_song(song) and not singer_keys_for_song(song).intersection(used_auto_singers)
-    ]
-    if diverse_ranked:
-        return diverse_ranked[0], style_id
-
-    return ranked[0], style_id
+    return pick_auto_suggest_song(room, ranked), style_id
 
 
 def append_room_queue_item(room: dict, song: dict, requested_by: str, auto_suggested: bool = False) -> dict:
@@ -2224,13 +2269,14 @@ def api_auto_suggest_song(code: str):
             }
         )
 
-    if len(room.get("queue", [])) > 1:
+    if len(room.get("queue", [])) >= AUTO_SUGGEST_QUEUE_TARGET:
         return jsonify(
             {
                 "success": True,
                 "enabled": True,
                 "added": False,
                 "queue_count": len(room["queue"]),
+                "queue_target": AUTO_SUGGEST_QUEUE_TARGET,
                 "reason": "queue has enough songs",
             }
         )
@@ -2275,6 +2321,7 @@ def api_auto_suggest_song(code: str):
             "item": item,
             "style": get_style_preset(style_id) if style_id and style_id != "popular" else None,
             "queue_count": len(room["queue"]),
+            "queue_target": AUTO_SUGGEST_QUEUE_TARGET,
         }
     )
 
